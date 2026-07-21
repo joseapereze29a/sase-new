@@ -1,0 +1,7 @@
+export enum Role {
+  SUPER_USUARIO = 1,
+  ADMINISTRADOR = 2,
+  COORDINADOR = 3,
+  PROFESOR = 4,
+  ESTUDIANTE = 5,
+}

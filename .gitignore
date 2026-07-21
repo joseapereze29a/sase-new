@@ -1,0 +1,35 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Next.js build
+.next/
+**/build/
+**/dist/
+
+# Logs & Environment
+*.log
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# SQL Backups (keeping only updated_database.sql)
+respaldo*.sql
+localhost.sql
+
+# Temporary PDFs and PNGs
+*.png
+test_*.pdf
+parents_*.png
+orientacion_*.png
+sexologia_*.png
+psicopolitica_*.png
+terapia_*.png
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

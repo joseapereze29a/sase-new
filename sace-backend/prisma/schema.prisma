@@ -1,0 +1,435 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model DatosPersonales {
+  cedula                    Int                            @id @default(0) @map("cedula") @db.UnsignedInt
+  apellidos                 String?                        @map("apellidos") @db.VarChar(30)
+  nombres                   String?                        @map("nombres") @db.VarChar(30)
+  fecha_nacimiento          DateTime?                      @map("fecha_nacimiento") @db.Date
+  lugar_nacimiento          String?                        @map("lugar_nacimiento") @db.VarChar(50)
+  nacionalidad              Nacionalidad?                  @map("nacionalidad")
+  sexo                      Sexo?                          @map("sexo")
+  direccion                 String?                        @map("direccion") @db.VarChar(255)
+  telefono_habitacion       String?                        @map("telefono_habitacion") @db.VarChar(30)
+  fax                       String?                        @map("fax") @db.VarChar(30)
+  email                     String?                        @map("email") @db.VarChar(100)
+  profesion_oficio          String?                        @map("profesion_oficio") @db.VarChar(100)
+  institucion               String?                        @map("institucion") @db.VarChar(100)
+  empleado_en               String?                        @map("empleado_en") @db.VarChar(100)
+  cargo_desempena           String?                        @map("cargo_desempena") @db.VarChar(100)
+  direccion_telefono        String?                        @map("direccion_telefono") @db.VarChar(255)
+  sueldo_salario            String?                        @map("sueldo_salario") @db.VarChar(50)
+  estado_civil              datos_personales_estado_civil? @map("estado_civil")
+  cid_conyuge               String?                        @map("cid_conyuge") @db.VarChar(10)
+  apellidos_nombres_conyuge String?                        @map("apellidos_nombres_conyuge") @db.VarChar(40)
+  nacionalidad_conyuge      Nacionalidad?                  @map("nacionalidad_conyuge")
+  grado_instruccion         String?                        @map("grado_instruccion") @db.VarChar(100)
+  profesion_ocupacion       String?                        @map("profesion_ocupacion") @db.VarChar(100)
+  nro_grupo_familiar        Int?                           @map("nro_grupo_familiar") @db.UnsignedInt
+  ingreso_familiar          String?                        @map("ingreso_familiar") @db.VarChar(50)
+  tipo_vivienda             String?                        @map("tipo_vivienda") @db.VarChar(15)
+  vehiculo                  datos_personales_vehiculo?     @map("vehiculo")
+  marca_vehiculo            String?                        @map("marca_vehiculo") @db.VarChar(50)
+  ano                       Int?                           @map("ano") @db.UnsignedInt
+  licencia_nro              String?                        @map("licencia_nro") @db.VarChar(50)
+  telefono_trabajo          String?                        @map("telefono_trabajo") @db.VarChar(30)
+  fecha_nacimiento_conyuge  DateTime?                      @map("fecha_nacimiento_conyuge") @db.Date
+  telefono_celular          String?                        @map("telefono_celular") @db.VarChar(30)
+  modelo_vehiculo           String?                        @map("modelo_vehiculo") @db.VarChar(50)
+  original                  SiNo?                          @default(no) @map("original")
+  fecha_creacion            DateTime?                      @map("fecha_creacion") @db.DateTime(0)
+  operador_creacion         String?                        @map("operador_creacion") @db.VarChar(20)
+  fecha_modificacion        DateTime?                      @map("fecha_modificacion") @db.DateTime(0)
+  operador_modificacion     String?                        @map("operador_modificacion") @db.VarChar(20)
+  host_creacion             String?                        @map("host_creacion") @db.VarChar(20)
+  host_modificacion         String?                        @map("host_modificacion") @db.VarChar(20)
+  usuario                   UsuariosSace?
+
+  @@map("datos_personales")
+}
+
+model RecordNotas {
+  codacta               String    @default("") @map("codacta") @db.VarChar(30)
+  cedula                Int       @default(0) @map("cedula") @db.UnsignedInt
+  calificacion          Int?      @map("calificacion")
+  codeq                 String?   @map("codeq") @db.VarChar(20)
+  fecha_creacion        DateTime? @map("fecha_creacion") @db.DateTime(0)
+  fecha_modificacion    DateTime? @map("fecha_modificacion") @db.DateTime(0)
+  operador_creacion     String?   @map("operador_creacion") @db.VarChar(20)
+  operador_modificacion String?   @map("operador_modificacion") @db.VarChar(20)
+  host_creacion         String?   @map("host_creacion") @db.VarChar(20)
+  host_modificacion     String?   @map("host_modificacion") @db.VarChar(20)
+  mid                   Int?      @map("mid") @db.UnsignedInt
+
+  @@id([codacta, cedula])
+  @@index([calificacion], map: "calificacion")
+  @@index([cedula], map: "cedula")
+  @@index([codeq], map: "codeq")
+  @@index([mid], map: "mid")
+  @@map("record_notas")
+}
+
+model RegistroActas {
+  codcohorte            String    @default("") @map("codcohorte") @db.VarChar(25)
+  codasig               String    @default("") @map("codasig") @db.VarChar(20)
+  codacta               String    @default("") @map("codacta") @db.VarChar(30)
+  cedula_profesor       Int?      @map("cedula_profesor")
+  fecha_aprobacion      DateTime? @map("fecha_aprobacion") @db.Date
+  fecha_creacion        DateTime? @map("fecha_creacion") @db.DateTime(0)
+  fecha_modificacion    DateTime? @map("fecha_modificacion") @db.DateTime(0)
+  operador_creacion     String?   @map("operador_creacion") @db.VarChar(20)
+  operador_modificacion String?   @map("operador_modificacion") @db.VarChar(20)
+  host_creacion         String?   @map("host_creacion") @db.VarChar(20)
+  host_modificacion     String?   @map("host_modificacion") @db.VarChar(20)
+
+  @@id([codcohorte, codasig, codacta])
+  @@map("registro_actas")
+}
+
+model OportunidadesEstudio {
+  codsede                  String                                          @default("") @map("codsede") @db.VarChar(10)
+  codopest                 String                                          @default("") @map("codopest") @db.VarChar(10)
+  tipo                     oportunidades_estudio_tipo?                     @map("tipo")
+  mencion_especialidad     String                                          @default("") @map("mencion_especialidad") @db.VarChar(100)
+  periodos                 Int?                                            @map("periodos") @db.UnsignedInt
+  actividad_especial_final oportunidades_estudio_actividad_especial_final? @map("actividad_especial_final")
+  creditos                 Int?                                            @map("creditos") @db.UnsignedInt
+  titulo_a_otorgar         String                                          @default("") @map("titulo_a_otorgar") @db.VarChar(255)
+
+  @@unique([codsede, codopest], map: "codsede")
+  @@map("oportunidades_estudio")
+}
+
+model PensumEstudios {
+  codsede     String  @default("") @map("codsede") @db.VarChar(10)
+  codopest    String  @default("") @map("codopest") @db.VarChar(10)
+  codasig     String  @default("") @map("codasig") @db.VarChar(20)
+  asignatura  String? @map("asignatura") @db.VarChar(100)
+  creditos    Int?    @map("creditos") @db.UnsignedInt
+  periodos    Int?    @map("periodos") @db.UnsignedInt
+  status      Status? @default(Activa) @map("status")
+  codasig_imp String  @default("") @map("codasig_imp") @db.VarChar(10)
+  multiacta   SiNo?   @default(no) @map("multiacta")
+
+  @@id([codsede, codopest, codasig])
+  @@map("pensum_estudios")
+}
+
+model UsuariosSace {
+  id              Int              @id @default(autoincrement())
+  user            String?          @db.VarChar(100)
+  pass            String?          @db.VarChar(255)
+  usuario         String?          @db.VarChar(100)
+  cedula          Int?             @unique @map("cedula")
+  rol             Int?
+  datosPersonales DatosPersonales? @relation(fields: [cedula], references: [cedula])
+
+  @@index([rol], map: "idx_rol")
+  @@map("usuarios_sace")
+}
+
+model Cohortes {
+  codsede               String    @default("") @map("codsede") @db.VarChar(10)
+  codopest              String    @default("") @map("codopest") @db.VarChar(10)
+  codcohorte            String    @default("") @map("codcohorte") @db.VarChar(25)
+  fecha_inicio          DateTime? @map("fecha_inicio") @db.Date
+  periodo_lectivo       String    @default("") @map("periodo_lectivo") @db.VarChar(20)
+  fecha_creacion        DateTime? @map("fecha_creacion") @db.DateTime(0)
+  fecha_modificacion    DateTime? @map("fecha_modificacion") @db.DateTime(0)
+  operador_creacion     String?   @map("operador_creacion") @db.VarChar(20)
+  operador_modificacion String?   @map("operador_modificacion") @db.VarChar(20)
+  host_creacion         String?   @map("host_creacion") @db.VarChar(20)
+  host_modificacion     String?   @map("host_modificacion") @db.VarChar(20)
+
+  @@id([codsede, codopest, codcohorte])
+  @@map("cohortes")
+}
+
+model Rol {
+  id_rol          Int     @id @default(autoincrement())
+  nombre_rol      String  @db.VarChar(10)
+  descripcion_rol String? @db.Text
+
+  @@map("rol")
+}
+
+model directorio_cippsv {
+  codsede              String                       @id @default("") @db.VarChar(10)
+  modalidad            directorio_cippsv_modalidad?
+  director_coordinador String                       @default("") @db.VarChar(50)
+  direccion            String                       @default("") @db.VarChar(255)
+  ciudad               String                       @default("") @db.VarChar(20)
+  edo_prov             String                       @default("") @db.VarChar(30)
+  fax                  String?                      @db.VarChar(30)
+  email                String?                      @db.VarChar(100)
+}
+
+model ediciones_actas {
+  eaid                  Int       @id @default(autoincrement()) @db.UnsignedInt
+  transaccion_id        Int?      @db.UnsignedInt
+  codcohorte            String    @default("") @db.VarChar(25)
+  codacta               String    @default("") @db.VarChar(30)
+  fecha_modificacion    DateTime? @db.DateTime(0)
+  operador_modificacion String?   @db.VarChar(20)
+  host_modificacion     String?   @db.VarChar(20)
+  operacion             String?   @db.VarChar(255)
+}
+
+model ediciones_cohortes {
+  ecid                  Int       @id @default(autoincrement()) @db.UnsignedInt
+  codcohorte            String    @default("") @db.VarChar(25)
+  fecha_modificacion    DateTime? @db.DateTime(0)
+  operador_modificacion String?   @db.VarChar(20)
+  host_modificacion     String?   @db.VarChar(20)
+  operacion             String?   @db.VarChar(255)
+}
+
+model eliminaciones_actas {
+  eaid                  Int       @id @default(autoincrement()) @db.UnsignedInt
+  codcohorte            String    @default("") @db.VarChar(25)
+  codasig               String    @default("") @db.VarChar(20)
+  codacta               String    @default("") @db.VarChar(30)
+  cedula_profesor       Int?
+  fecha_aprobacion      DateTime? @db.Date
+  fecha_creacion        DateTime? @db.DateTime(0)
+  fecha_modificacion    DateTime? @db.DateTime(0)
+  operador_creacion     String?   @db.VarChar(20)
+  operador_modificacion String?   @db.VarChar(20)
+  host_creacion         String?   @db.VarChar(20)
+  host_modificacion     String?   @db.VarChar(20)
+  fecha_eliminacion     DateTime? @db.DateTime(0)
+  operador_eliminacion  String?   @db.VarChar(20)
+  host_eliminacion      String?   @db.VarChar(20)
+}
+
+model eliminaciones_cohortes {
+  ecid                  Int       @id @default(autoincrement()) @db.UnsignedInt
+  codsede               String    @default("") @db.VarChar(10)
+  codopest              String    @default("") @db.VarChar(10)
+  codcohorte            String    @default("") @db.VarChar(25)
+  fecha_inicio          DateTime? @db.Date
+  periodo_lectivo       String?   @db.VarChar(10)
+  fecha_creacion        DateTime? @db.DateTime(0)
+  fecha_modificacion    DateTime? @db.DateTime(0)
+  operador_creacion     String?   @db.VarChar(20)
+  operador_modificacion String?   @db.VarChar(20)
+  host_creacion         String?   @db.VarChar(20)
+  host_modificacion     String?   @db.VarChar(20)
+  fecha_eliminacion     DateTime? @db.DateTime(0)
+  operador_eliminacion  String?   @db.VarChar(20)
+  host_eliminacion      String?   @db.VarChar(20)
+}
+
+model eliminaciones_multiactas {
+  emid                  Int       @id @default(autoincrement()) @db.UnsignedInt
+  mid                   Int       @default(0) @db.UnsignedInt
+  codcohorte            String    @default("") @db.VarChar(25)
+  codasig               String    @default("") @db.VarChar(20)
+  codacta               String    @default("") @db.VarChar(30)
+  cedula_profesor1      Int?
+  cedula_profesor2      Int?
+  cedula_profesor3      Int?
+  cedula_profesor4      Int?
+  cedula_profesor5      Int?
+  fecha_aprobacion      DateTime? @db.Date
+  fecha_creacion        DateTime? @db.DateTime(0)
+  fecha_modificacion    DateTime? @db.DateTime(0)
+  operador_creacion     String?   @db.VarChar(20)
+  operador_modificacion String?   @db.VarChar(20)
+  host_creacion         String?   @db.VarChar(20)
+  host_modificacion     String?   @db.VarChar(20)
+  fecha_eliminacion     DateTime? @db.DateTime(0)
+  operador_eliminacion  String?   @db.VarChar(20)
+  host_eliminacion      String?   @db.VarChar(20)
+}
+
+model eliminaciones_notas {
+  enid                  Int       @id @default(autoincrement()) @db.UnsignedInt
+  codacta               String    @default("") @db.VarChar(30)
+  cedula                Int       @default(0) @db.UnsignedInt
+  calificacion          Int?
+  codeq                 String?   @db.VarChar(20)
+  fecha_creacion        DateTime? @db.DateTime(0)
+  fecha_modificacion    DateTime? @db.DateTime(0)
+  operador_creacion     String?   @db.VarChar(20)
+  operador_modificacion String?   @db.VarChar(20)
+  host_creacion         String?   @db.VarChar(20)
+  host_modificacion     String?   @db.VarChar(20)
+  mid                   Int?      @db.UnsignedInt
+  fecha_eliminacion     DateTime? @db.DateTime(0)
+  operador_eliminacion  String?   @db.VarChar(20)
+  host_eliminacion      String?   @db.VarChar(20)
+}
+
+model ficha_contenido {
+  cedula               Int                                   @id @default(0) @db.UnsignedInt
+  apellidos            String?                               @db.VarChar(30)
+  nombres              String?                               @db.VarChar(30)
+  nucleo               String?                               @db.VarChar(255)
+  postgrado            String?                               @db.VarChar(255)
+  ano_ingreso          String?                               @db.VarChar(255)
+  planilla_inscripcion ficha_contenido_planilla_inscripcion? @default(NO)
+  fondo_negro          ficha_contenido_fondo_negro?          @default(NO)
+  notas_certificadas   ficha_contenido_notas_certificadas?   @default(NO)
+  partida_nacimiento   ficha_contenido_partida_nacimiento?   @default(NO)
+  tiene_ci             ficha_contenido_tiene_ci?             @default(NO)
+  curriculum           ficha_contenido_curriculum?           @default(NO)
+}
+
+model multiactas {
+  mid                   Int       @id @default(autoincrement()) @db.UnsignedInt
+  codcohorte            String    @default("") @db.VarChar(25)
+  codasig               String    @default("") @db.VarChar(20)
+  codacta               String    @default("") @db.VarChar(30)
+  cedula_profesor1      Int?
+  cedula_profesor2      Int?
+  cedula_profesor3      Int?
+  cedula_profesor4      Int?
+  cedula_profesor5      Int?
+  fecha_aprobacion      DateTime? @db.Date
+  fecha_creacion        DateTime? @db.DateTime(0)
+  fecha_modificacion    DateTime? @db.DateTime(0)
+  operador_creacion     String?   @db.VarChar(20)
+  operador_modificacion String?   @db.VarChar(20)
+  host_creacion         String?   @db.VarChar(20)
+  host_modificacion     String?   @db.VarChar(20)
+
+  @@index([codacta], map: "codacta")
+  @@index([codacta], map: "codacta_2")
+  @@index([codasig], map: "codasig")
+  @@index([codcohorte], map: "codcohorte")
+  @@index([codcohorte], map: "codcohorte_2")
+}
+
+model pensum_prelaciones {
+  codsede   String @default("") @db.VarChar(10)
+  codopest  String @default("") @db.VarChar(10)
+  codasig   String @default("") @db.VarChar(20)
+  prelacion String @default("") @db.VarChar(10)
+
+  @@id([codsede, codopest, codasig, prelacion])
+}
+
+model profesores_cippsv {
+  cedula_profesor   Int    @unique(map: "cedula_profesor") @default(0)
+  apellidos_nombres String @default("") @db.VarChar(40)
+  nombres           String @default("") @db.VarChar(40)
+  cid               Int    @id @default(autoincrement())
+}
+
+model status {
+  sid        Int            @id @default(autoincrement()) @db.UnsignedInt
+  cedula     Int?           @db.UnsignedInt
+  codcohorte String         @default("") @db.VarChar(25)
+  status     status_status?
+
+  @@index([cedula], map: "cedula")
+  @@index([codcohorte], map: "codcohorte")
+  @@index([status], map: "status")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model telefonos_cippsv {
+  codsede  String  @default("") @db.VarChar(10)
+  codigo   String? @db.VarChar(5)
+  telefono String? @db.VarChar(20)
+
+  @@index([codsede], map: "codsede")
+  @@ignore
+}
+
+enum Nacionalidad {
+  Venezolana
+  Extranjera
+}
+
+enum Sexo {
+  Femenino
+  Masculino
+}
+
+enum SiNo {
+  si
+  no
+}
+
+enum Status {
+  Activa
+  Inactiva
+}
+
+enum directorio_cippsv_modalidad {
+  Sede
+  Nucleo
+}
+
+enum oportunidades_estudio_tipo {
+  Maestria
+  Especializacion
+  Doctorado
+  Diplomado
+}
+
+enum status_status {
+  Activo
+  Inactivo
+  Egresado
+  Activo_a_mano
+  Inactivo_a_mano
+  Egresado_a_mano
+}
+
+enum oportunidades_estudio_actividad_especial_final {
+  Trabajo_de_Grado         @map("Trabajo de Grado")
+  Trabajo_de_Investigacion @map("Trabajo de Investigacion")
+  Vacio                    @map("")
+}
+
+enum ficha_contenido_planilla_inscripcion {
+  SI
+  NO
+}
+
+enum ficha_contenido_fondo_negro {
+  SI
+  NO
+}
+
+enum ficha_contenido_notas_certificadas {
+  SI
+  NO
+}
+
+enum ficha_contenido_partida_nacimiento {
+  SI
+  NO
+}
+
+enum ficha_contenido_tiene_ci {
+  SI
+  NO
+}
+
+enum ficha_contenido_curriculum {
+  SI
+  NO
+}
+
+enum datos_personales_estado_civil {
+  Soltero_a_    @map("Soltero(a)")
+  Casado_a_     @map("Casado(a)")
+  Divorciado_a_ @map("Divorciado(a)")
+  Viudo_a_      @map("Viudo(a)")
+}
+
+enum datos_personales_vehiculo {
+  Si
+  No
+}
