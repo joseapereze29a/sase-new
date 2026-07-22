@@ -2797,12 +2797,14 @@ export default function Home() {
                                       e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
                                     }}
                                   >
-                                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#a78bfa' }}>{c.codcohorte}</div>
+                                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#a78bfa' }}>
+                                      {c.fecha_inicio ? `Inicio: ${new Date(c.fecha_inicio).toLocaleDateString('es-VE')}` : 'Sin fecha de inicio'}
+                                    </div>
                                     <div style={{ fontSize: '13px', marginTop: '6px', color: 'rgba(255,255,255,0.6)' }}>
                                       Programa: {c.codopest} | Período: {c.periodo_lectivo}
                                     </div>
                                     <div style={{ fontSize: '11px', marginTop: '10px', color: 'rgba(255,255,255,0.4)' }}>
-                                      Sede: {c.codsede} {c.fecha_inicio ? `| Inicio: ${new Date(c.fecha_inicio).toLocaleDateString('es-VE')}` : ''}
+                                      Sede: {c.codsede} | Código Cohorte: {c.codcohorte}
                                     </div>
                                   </div>
                                 ))}
@@ -2846,7 +2848,9 @@ export default function Home() {
                                     }}
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#a78bfa', minWidth: '120px' }}>{c.codcohorte}</div>
+                                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#a78bfa', minWidth: '150px' }}>
+                                        {c.fecha_inicio ? `Inicio: ${new Date(c.fecha_inicio).toLocaleDateString('es-VE')}` : 'Sin fecha de inicio'}
+                                      </div>
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
                                         Programa: <span style={{ fontWeight: 600, color: '#fff' }}>{c.codopest}</span>
                                       </div>
@@ -2858,11 +2862,9 @@ export default function Home() {
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
                                         Sede: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{c.codsede}</span>
                                       </div>
-                                      {c.fecha_inicio && (
-                                        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                                          Inicio: {new Date(c.fecha_inicio).toLocaleDateString('es-VE')}
-                                        </div>
-                                      )}
+                                      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                                        Código: {c.codcohorte}
+                                      </div>
                                       <div style={{ color: '#6366f1', fontSize: '14px', fontWeight: 'bold' }}>➔</div>
                                     </div>
                                   </div>
@@ -4294,13 +4296,15 @@ export default function Home() {
                                   }}
                                 >
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 700, color: '#fff' }}>{a.codacta}</span>
+                                    <span style={{ fontWeight: 700, color: '#fff' }}>
+                                      {a.fecha_creacion ? `Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-VE')}` : 'Sin fecha'}
+                                    </span>
                                     <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '8px' }}>
                                       Profesor: {a.cedula_profesor || 'No asignado'}
                                     </span>
                                   </div>
                                   <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '6px' }}>
-                                    Asignatura: {a.codasig} | Cohorte: {a.codcohorte}
+                                    Asignatura: {a.codasig} | Cohorte: {a.codcohorte} | Código Acta: {a.codacta}
                                   </div>
                                 </div>
                               ))}
