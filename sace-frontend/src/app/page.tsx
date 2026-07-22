@@ -158,6 +158,25 @@ export default function Home() {
       }
     }
   }, []);
+
+  const formatCalificacion = (calif: number | null | undefined): string => {
+    if (calif === null || calif === undefined) return 'S/N';
+    if (calif === 404) return 'Sin nota';
+    if (calif === 99) return 'Reprobado';
+    if (calif === 100) return 'Aprobada';
+    if (calif === 110) return 'Meritorio';
+    if (calif === 120) return 'Excelencia';
+    if (calif === 212) return 'Equivalencia';
+    return String(calif);
+  };
+
+  const getCalificacionColor = (calif: number | null | undefined): string => {
+    if (calif === null || calif === undefined || calif === 404) return 'rgba(255,255,255,0.4)';
+    if (calif === 99) return '#f87171';
+    if (calif >= 10) return '#4ade80';
+    return '#f87171';
+  };
+
  
   // Sugerir código de cohorte dinámicamente según la sede, programa y período
   useEffect(() => {
@@ -1878,7 +1897,7 @@ export default function Home() {
                         <div>
                           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Materias Aprobadas</div>
                           <div style={{ fontSize: '28px', fontWeight: 800, marginTop: '4px' }}>
-                            {studentProfileData?.notas?.filter((n: any) => n.calificacion !== null && n.calificacion >= 10).length || 0}
+                            {studentProfileData?.notas?.filter((n: any) => n.calificacion !== null && n.calificacion >= 10 && n.calificacion !== 404).length || 0}
                           </div>
                         </div>
                       </div>
@@ -1888,7 +1907,7 @@ export default function Home() {
                         <div>
                           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Créditos Aprobados</div>
                           <div style={{ fontSize: '28px', fontWeight: 800, marginTop: '4px', color: '#60a5fa' }}>
-                            {studentProfileData?.notas?.filter((n: any) => n.calificacion !== null && n.calificacion >= 10 && n.creditos)
+                            {studentProfileData?.notas?.filter((n: any) => n.calificacion !== null && n.calificacion >= 10 && n.calificacion !== 404 && n.creditos)
                               .reduce((sum: number, n: any) => sum + Number(n.creditos), 0) || 0} U.C.
                           </div>
                         </div>
@@ -1900,7 +1919,7 @@ export default function Home() {
                           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Promedio General</div>
                           <div style={{ fontSize: '28px', fontWeight: 800, marginTop: '4px', color: '#4ade80' }}>
                             {(() => {
-                              const validGrades = studentProfileData?.notas?.filter((n: any) => n.calificacion !== null) || [];
+                              const validGrades = studentProfileData?.notas?.filter((n: any) => n.calificacion !== null && n.calificacion !== 404) || [];
                               return validGrades.length > 0 
                                 ? (validGrades.reduce((sum: number, n: any) => sum + n.calificacion, 0) / validGrades.length).toFixed(2)
                                 : 'S/N';
@@ -2220,9 +2239,9 @@ export default function Home() {
                                                   ...tdStyle,
                                                   width: '120px',
                                                   fontWeight: 700,
-                                                  color: n.calificacion >= 10 ? '#4ade80' : '#f87171'
+                                                  color: getCalificacionColor(n.calificacion)
                                                 }}>
-                                                  {n.calificacion !== null ? n.calificacion : 'S/N'}
+                                                  {formatCalificacion(n.calificacion)}
                                                 </td>
                                               </tr>
                                             ))}
@@ -2270,9 +2289,9 @@ export default function Home() {
                                     <td style={{
                                       ...tdStyle,
                                       fontWeight: 700,
-                                      color: n.calificacion >= 10 ? '#4ade80' : '#f87171'
+                                      color: getCalificacionColor(n.calificacion)
                                     }}>
-                                      {n.calificacion !== null ? n.calificacion : 'S/N'}
+                                      {formatCalificacion(n.calificacion)}
                                     </td>
                                   </tr>
                                 ))}
@@ -2332,9 +2351,9 @@ export default function Home() {
                                       <td style={{
                                         ...tdStyle,
                                         fontWeight: 700,
-                                        color: n.calificacion >= 10 ? '#4ade80' : '#f87171'
+                                        color: getCalificacionColor(n.calificacion)
                                       }}>
-                                        {n.calificacion !== null ? n.calificacion : 'S/N'}
+                                        {formatCalificacion(n.calificacion)}
                                       </td>
                                     </tr>
                                   ))}
@@ -3989,13 +4008,12 @@ export default function Home() {
                         const espec = studentProfileData.especializaciones?.find((e: any) => e.codcohorte === cohCode);
                         
                         // Calculate stats
-                        const validGrades = cohNotas.filter((n: any) => n.calificacion !== null);
+                        const validGrades = cohNotas.filter((n: any) => n.calificacion !== null && n.calificacion !== 404);
                         const avg = validGrades.length > 0 
                           ? (validGrades.reduce((sum: number, n: any) => sum + n.calificacion, 0) / validGrades.length).toFixed(2)
                           : 'S/N';
                         
-                        const approvedCredits = cohNotas
-                          .filter((n: any) => n.calificacion !== null && n.calificacion >= 10 && n.creditos)
+                        const approvedCredits = cohNotas.filter((n: any) => n.calificacion !== null && n.calificacion >= 10 && n.calificacion !== 404 && n.creditos)
                           .reduce((sum: number, n: any) => sum + Number(n.creditos), 0);
 
                         return (
@@ -4067,9 +4085,9 @@ export default function Home() {
                                       <td style={{ ...tdStyle, color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>{n.codacta}</td>
                                       <td style={{
                                         ...tdStyle, textAlign: 'center', fontWeight: 700,
-                                        color: n.calificacion === null ? 'rgba(255,255,255,0.3)' : n.calificacion >= 10 ? '#4ade80' : '#f87171'
+                                        color: getCalificacionColor(n.calificacion)
                                       }}>
-                                        {n.calificacion !== null ? n.calificacion : 'S/N'}
+                                        {formatCalificacion(n.calificacion)}
                                       </td>
                                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                                         {n.codeq ? (
@@ -4368,8 +4386,8 @@ export default function Home() {
                                           ? `${n.nombres} ${n.apellidos}`.trim()
                                           : 'Cargando...'}
                                       </td>
-                                      <td style={{ ...tdStyle, fontWeight: 700, color: n.calificacion >= 10 ? '#4ade80' : '#f87171' }}>
-                                        {n.calificacion !== null ? n.calificacion : 'S/N'}
+                                      <td style={{ ...tdStyle, fontWeight: 700, color: getCalificacionColor(n.calificacion) }}>
+                                        {formatCalificacion(n.calificacion)}
                                       </td>
                                     </tr>
                                   ))
@@ -5822,8 +5840,8 @@ export default function Home() {
                                   <td style={{ ...tdStyle, fontWeight: 700 }}>{n.cedula}</td>
                                   <td style={tdStyle}>{n.apellidos}</td>
                                   <td style={tdStyle}>{n.nombres}</td>
-                                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 800, color: n.calificacion >= 10 ? '#34d399' : '#f87171' }}>
-                                    {n.calificacion !== null && n.calificacion !== undefined ? n.calificacion : '-'}
+                                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 800, color: getCalificacionColor(n.calificacion) }}>
+                                    {formatCalificacion(n.calificacion)}
                                   </td>
                                   <td style={{ ...tdStyle, textAlign: 'center', color: '#60a5fa', fontWeight: 600 }}>{n.codeq || '-'}</td>
                                 </tr>
