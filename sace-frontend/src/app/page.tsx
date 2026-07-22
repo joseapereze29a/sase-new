@@ -104,6 +104,7 @@ export default function Home() {
   const [loadingStudentProfile, setLoadingStudentProfile] = useState(false);
   const [cohorteSearch, setCohorteSearch] = useState('');
   const [cohortePage, setCohortePage] = useState(1);
+  const [cohorteViewMode, setCohorteViewMode] = useState<'grid' | 'list'>('grid');
   const [actaSearch, setActaSearch] = useState('');
   const [actaPage, setActaPage] = useState(1);
   const [newCohorte, setNewCohorte] = useState({
@@ -2688,8 +2689,8 @@ export default function Home() {
 
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {/* Buscador de Cohortes */}
-                        <div style={{ ...panelCardStyle, padding: '16px' }}>
+                        {/* Buscador de Cohortes y Modo de Vista */}
+                        <div style={{ ...panelCardStyle, padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                           <input
                             type="text"
                             placeholder="🔍 Buscar cohorte por código, período lectivo..."
@@ -2698,8 +2699,42 @@ export default function Home() {
                               setCohorteSearch(e.target.value);
                               setCohortePage(1);
                             }}
-                            style={inputStyle}
+                            style={{ ...inputStyle, flex: 1, minWidth: '200px', margin: 0 }}
                           />
+                          <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <button
+                              onClick={() => setCohorteViewMode('grid')}
+                              style={{
+                                border: 'none',
+                                background: cohorteViewMode === 'grid' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                                color: cohorteViewMode === 'grid' ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: 700,
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              🎴 Tarjetas
+                            </button>
+                            <button
+                              onClick={() => setCohorteViewMode('list')}
+                              style={{
+                                border: 'none',
+                                background: cohorteViewMode === 'list' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                                color: cohorteViewMode === 'list' ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: 700,
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              📋 Lista
+                            </button>
+                          </div>
                         </div>
 
                         {filtered.length === 0 ? (
@@ -2708,50 +2743,113 @@ export default function Home() {
                           </div>
                         ) : (
                           <>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                              {paginated.map((c) => (
-                                <div
-                                  key={`${c.codsede}-${c.codopest}-${c.codcohorte}`}
-                                  onClick={() => {
-                                    setSelectedCohorte(c);
-                                    setEditableCohorte({
-                                      ...c,
-                                      fecha_inicio: c.fecha_inicio ? c.fecha_inicio.substring(0, 10) : ''
-                                    });
-                                    setIsEditingCohorte(false);
-                                    setCohorteActas([]);
-                                    setShowCohorteDetailModal(true);
-                                    loadCohorteActas(c.codcohorte);
-                                  }}
-                                  style={{
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(255,255,255,0.05)',
-                                    padding: '16px',
-                                    borderRadius: '16px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                  }}
-                                >
-                                  <div style={{ fontSize: '16px', fontWeight: 700, color: '#a78bfa' }}>{c.codcohorte}</div>
-                                  <div style={{ fontSize: '13px', marginTop: '6px', color: 'rgba(255,255,255,0.6)' }}>
-                                    Programa: {c.codopest} | Período: {c.periodo_lectivo}
+                            {cohorteViewMode === 'grid' ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                                {paginated.map((c) => (
+                                  <div
+                                    key={`${c.codsede}-${c.codopest}-${c.codcohorte}`}
+                                    onClick={() => {
+                                      setSelectedCohorte(c);
+                                      setEditableCohorte({
+                                        ...c,
+                                        fecha_inicio: c.fecha_inicio ? c.fecha_inicio.substring(0, 10) : ''
+                                      });
+                                      setIsEditingCohorte(false);
+                                      setCohorteActas([]);
+                                      setShowCohorteDetailModal(true);
+                                      loadCohorteActas(c.codcohorte);
+                                    }}
+                                    style={{
+                                      background: 'rgba(255,255,255,0.02)',
+                                      border: '1px solid rgba(255,255,255,0.05)',
+                                      padding: '16px',
+                                      borderRadius: '16px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(-2px)';
+                                      e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(0)';
+                                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                    }}
+                                  >
+                                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#a78bfa' }}>{c.codcohorte}</div>
+                                    <div style={{ fontSize: '13px', marginTop: '6px', color: 'rgba(255,255,255,0.6)' }}>
+                                      Programa: {c.codopest} | Período: {c.periodo_lectivo}
+                                    </div>
+                                    <div style={{ fontSize: '11px', marginTop: '10px', color: 'rgba(255,255,255,0.4)' }}>
+                                      Sede: {c.codsede} {c.fecha_inicio ? `| Inicio: ${new Date(c.fecha_inicio).toLocaleDateString('es-VE')}` : ''}
+                                    </div>
                                   </div>
-                                  <div style={{ fontSize: '11px', marginTop: '10px', color: 'rgba(255,255,255,0.4)' }}>
-                                    Sede: {c.codsede} {c.fecha_inicio ? `| Inicio: ${new Date(c.fecha_inicio).toLocaleDateString('es-VE')}` : ''}
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {paginated.map((c) => (
+                                  <div
+                                    key={`${c.codsede}-${c.codopest}-${c.codcohorte}`}
+                                    onClick={() => {
+                                      setSelectedCohorte(c);
+                                      setEditableCohorte({
+                                        ...c,
+                                        fecha_inicio: c.fecha_inicio ? c.fecha_inicio.substring(0, 10) : ''
+                                      });
+                                      setIsEditingCohorte(false);
+                                      setCohorteActas([]);
+                                      setShowCohorteDetailModal(true);
+                                      loadCohorteActas(c.codcohorte);
+                                    }}
+                                    style={{
+                                      background: 'rgba(255,255,255,0.02)',
+                                      border: '1px solid rgba(255,255,255,0.05)',
+                                      padding: '12px 20px',
+                                      borderRadius: '12px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      flexWrap: 'wrap',
+                                      gap: '12px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#a78bfa', minWidth: '120px' }}>{c.codcohorte}</div>
+                                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
+                                        Programa: <span style={{ fontWeight: 600, color: '#fff' }}>{c.codopest}</span>
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                                        Período: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{c.periodo_lectivo}</span>
+                                      </div>
+                                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                                        Sede: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{c.codsede}</span>
+                                      </div>
+                                      {c.fecha_inicio && (
+                                        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                                          Inicio: {new Date(c.fecha_inicio).toLocaleDateString('es-VE')}
+                                        </div>
+                                      )}
+                                      <div style={{ color: '#6366f1', fontSize: '14px', fontWeight: 'bold' }}>➔</div>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
+                                ))}
+                              </div>
+                            )}
 
                             {/* Paginación */}
                             {totalPages > 1 && (
