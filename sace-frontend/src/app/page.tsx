@@ -1720,19 +1720,22 @@ export default function Home() {
         <div style={{ display: 'flex', flex: 1, minHeight: '100vh' }}>
           
           {/* Left Sidebar */}
-          <div style={{
-            width: '260px',
-            background: 'rgba(15,12,38,0.5)',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
-            padding: '24px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            position: 'sticky',
-            top: 0,
-            height: '100vh',
-            overflowY: 'auto'
-          }}>
+          <div 
+            className="hide-scrollbar"
+            style={{
+              width: '260px',
+              background: 'rgba(15,12,38,0.5)',
+              borderRight: '1px solid rgba(255,255,255,0.06)',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              position: 'sticky',
+              top: 0,
+              height: '100vh',
+              overflowY: 'auto'
+            }}
+          >
             <div>
               {/* Brand logo */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px' }}>

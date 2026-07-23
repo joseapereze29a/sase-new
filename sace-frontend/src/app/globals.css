@@ -35,3 +35,15 @@ body {
   background: rgba(255, 255, 255, 0.03) !important;
   box-shadow: 0 12px 30px -10px rgba(167, 139, 250, 0.12);
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
