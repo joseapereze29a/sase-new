@@ -107,6 +107,7 @@ export default function Home() {
   const [cohorteViewMode, setCohorteViewMode] = useState<'grid' | 'list'>('grid');
   const [actaSearch, setActaSearch] = useState('');
   const [actaPage, setActaPage] = useState(1);
+  const [actaViewMode, setActaViewMode] = useState<'grid' | 'list'>('grid');
   const [newCohorte, setNewCohorte] = useState({
     codsede: '', codopest: '', codcohorte: '', periodo_lectivo: '2026-I', fecha_inicio: ''
   });
@@ -4212,8 +4213,8 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Buscador de Actas */}
-                      <div style={{ marginBottom: '16px' }}>
+                      {/* Buscador y Selector de Vista de Actas */}
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
                         <input
                           type="text"
                           placeholder="🔍 Buscar acta, materia, cohorte o profesor..."
@@ -4222,8 +4223,42 @@ export default function Home() {
                             setActaSearch(e.target.value);
                             setActaPage(1);
                           }}
-                          style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px' }}
+                          style={{ ...inputStyle, flex: 1, minWidth: '200px', margin: 0 }}
                         />
+                        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <button
+                            onClick={() => setActaViewMode('grid')}
+                            style={{
+                              border: 'none',
+                              background: actaViewMode === 'grid' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                              color: actaViewMode === 'grid' ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            🎴 Tarjetas
+                          </button>
+                          <button
+                            onClick={() => setActaViewMode('list')}
+                            style={{
+                              border: 'none',
+                              background: actaViewMode === 'list' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                              color: actaViewMode === 'list' ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            📋 Lista
+                          </button>
+                        </div>
                       </div>
                       
                       {(() => {
@@ -4281,66 +4316,129 @@ export default function Home() {
 
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                              {paginated.map((a) => (
-                                <div
-                                  key={`${a.codcohorte}-${a.codasig}-${a.codacta}`}
-                                  onClick={() => {
-                                    setSelectedActaDetail(a);
-                                    setEditableActa({
-                                      ...a,
-                                      fecha_aprobacion: a.fecha_aprobacion ? a.fecha_aprobacion.substring(0, 10) : ''
-                                    });
-                                    setIsEditingActa(false);
-                                    setActaNotasDetail([]);
-                                    setShowActaDetailModal(true);
-                                    loadActaNotasDetail(a.codacta);
-                                  }}
-                                  style={{
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(255,255,255,0.05)',
-                                    padding: '12px 20px',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
-                                    gap: '12px'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', minWidth: '150px' }}>
-                                      {a.fecha_creacion ? `Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-VE')}` : 'Sin fecha'}
+                            {actaViewMode === 'grid' ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                                {paginated.map((a) => (
+                                  <div
+                                    key={`${a.codcohorte}-${a.codasig}-${a.codacta}`}
+                                    onClick={() => {
+                                      setSelectedActaDetail(a);
+                                      setEditableActa({
+                                        ...a,
+                                        fecha_aprobacion: a.fecha_aprobacion ? a.fecha_aprobacion.substring(0, 10) : ''
+                                      });
+                                      setIsEditingActa(false);
+                                      setActaNotasDetail([]);
+                                      setShowActaDetailModal(true);
+                                      loadActaNotasDetail(a.codacta);
+                                    }}
+                                    style={{
+                                      background: 'rgba(255,255,255,0.02)',
+                                      border: '1px solid rgba(255,255,255,0.05)',
+                                      padding: '18px',
+                                      borderRadius: '16px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '12px',
+                                      boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(-4px)';
+                                      e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(99,102,241,0.08)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(0)';
+                                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#818cf8', fontWeight: 700 }}>
+                                        Acta de Evaluación
+                                      </span>
+                                      <span style={{ fontSize: '11px', background: 'rgba(96,165,250,0.1)', color: '#60a5fa', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                                        {a.codacta}
+                                      </span>
                                     </div>
-                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
-                                      Asignatura: <span style={{ fontWeight: 600, color: '#a78bfa' }}>{a.asignatura_nombre} ({a.codasig})</span>
+                                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fff', lineHeight: 1.3 }}>
+                                      {a.asignatura_nombre}
+                                    </h4>
+                                    <div style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+                                      <div>📅 <span style={{ color: '#fff', fontWeight: 500 }}>{a.fecha_creacion ? new Date(a.fecha_creacion).toLocaleDateString('es-VE') : 'Sin fecha'}</span></div>
+                                      <div>👥 Cohorte: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.codcohorte}</span></div>
+                                      <div>👨‍🏫 Profesor: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.profesor || 'No asignado'}</span></div>
                                     </div>
                                   </div>
-                                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                                      Cohorte: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codcohorte}</span>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {paginated.map((a) => (
+                                  <div
+                                    key={`${a.codcohorte}-\${a.codasig}-\${a.codacta}`}
+                                    onClick={() => {
+                                      setSelectedActaDetail(a);
+                                      setEditableActa({
+                                        ...a,
+                                        fecha_aprobacion: a.fecha_aprobacion ? a.fecha_aprobacion.substring(0, 10) : ''
+                                      });
+                                      setIsEditingActa(false);
+                                      setActaNotasDetail([]);
+                                      setShowActaDetailModal(true);
+                                      loadActaNotasDetail(a.codacta);
+                                    }}
+                                    style={{
+                                      background: 'rgba(255,255,255,0.02)',
+                                      border: '1px solid rgba(255,255,255,0.05)',
+                                      padding: '12px 20px',
+                                      borderRadius: '12px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      flexWrap: 'wrap',
+                                      gap: '12px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', minWidth: '150px' }}>
+                                        {a.fecha_creacion ? `Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-VE')}` : 'Sin fecha'}
+                                      </div>
+                                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
+                                        Asignatura: <span style={{ fontWeight: 600, color: '#a78bfa' }}>{a.asignatura_nombre} ({a.codasig})</span>
+                                      </div>
                                     </div>
-                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                                      Código Acta: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codacta}</span>
+                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                                        Cohorte: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codcohorte}</span>
+                                      </div>
+                                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                                        Código Acta: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codacta}</span>
+                                      </div>
+                                      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '6px' }}>
+                                        Profesor: {a.profesor || 'No asignado'}
+                                      </div>
+                                      <div style={{ color: '#6366f1', fontSize: '14px', fontWeight: 'bold' }}>➔</div>
                                     </div>
-                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '6px' }}>
-                                      Profesor: {a.profesor || 'No asignado'}
-                                    </div>
-                                    <div style={{ color: '#6366f1', fontSize: '14px', fontWeight: 'bold' }}>➔</div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
 
                             {/* Controles de Paginación */}
                             {totalPages > 1 && (
