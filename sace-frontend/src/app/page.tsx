@@ -4382,8 +4382,8 @@ export default function Home() {
                                     </td>
                                   </tr>
                                 ) : (
-                                  actaNotas.map((n) => (
-                                    <tr key={n.cedula} style={trStyle}>
+                                  actaNotas.map((n, idx) => (
+                                     <tr key={`${n.cedula}-${idx}`} style={trStyle}>
                                       <td style={{ ...tdStyle, fontWeight: 700 }}>{n.cedula}</td>
                                       <td style={tdStyle}>
                                         {n.nombres || n.apellidos
