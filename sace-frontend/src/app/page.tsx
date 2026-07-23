@@ -117,6 +117,8 @@ export default function Home() {
   const [showCreateTeacher, setShowCreateTeacher] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState('');
   const [teacherPage, setTeacherPage] = useState(1);
+  const [teacherViewMode, setTeacherViewMode] = useState<'grid' | 'list'>('grid');
+  const [showTeacherDetailModal, setShowTeacherDetailModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isEditingTeacher, setIsEditingTeacher] = useState(false);
   const [editableTeacher, setEditableTeacher] = useState({ apellidos_nombres: '', nombres: '' });
@@ -3102,9 +3104,9 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  // Admin/Coordinator View: Split Layout
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
-                    {/* Left Panel: Search + Paginated List */}
+                  // Admin/Coordinator View: Full Width List
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Directory Panel */}
                     <div style={panelCardStyle}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Directorio de Profesores</h3>
@@ -3115,18 +3117,52 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* Buscador */}
-                      <div style={{ marginBottom: '16px' }}>
+                      {/* Buscador y Selector de Vista de Profesores */}
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
                         <input
                           type="text"
-                          placeholder="🔍 Buscar profesor..."
+                          placeholder="🔍 Buscar profesor por nombre, apellido o cédula..."
                           value={teacherSearch}
                           onChange={(e) => {
                             setTeacherSearch(e.target.value);
                             setTeacherPage(1);
                           }}
-                          style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px' }}
+                          style={{ ...inputStyle, flex: 1, minWidth: '200px', margin: 0 }}
                         />
+                        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <button
+                            onClick={() => setTeacherViewMode('grid')}
+                            style={{
+                              border: 'none',
+                              background: teacherViewMode === 'grid' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                              color: teacherViewMode === 'grid' ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            🎴 Tarjetas
+                          </button>
+                          <button
+                            onClick={() => setTeacherViewMode('list')}
+                            style={{
+                              border: 'none',
+                              background: teacherViewMode === 'list' ? 'rgba(99,102,241,0.2)' : 'transparent',
+                              color: teacherViewMode === 'list' ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            📋 Lista
+                          </button>
+                        </div>
                       </div>
 
                       {(() => {
@@ -3155,46 +3191,102 @@ export default function Home() {
 
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ overflowX: 'auto' }}>
-                              <table style={tableStyle}>
-                                <thead>
-                                  <tr>
-                                    <th style={thStyle}>Cédula</th>
-                                    <th style={thStyle}>Nombre y Apellido</th>
-                                    <th style={{ ...thStyle, textAlign: 'center' }}>Acción</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {paginated.map((p) => (
-                                    <tr
-                                      key={p.cedula_profesor}
-                                      style={{
-                                        ...trStyle,
-                                        background: selectedTeacher?.cedula_profesor === p.cedula_profesor ? 'rgba(99,102,241,0.08)' : 'transparent',
-                                      }}
-                                    >
-                                      <td style={{ ...tdStyle, fontWeight: 700 }}>{p.cedula_profesor}</td>
-                                      <td style={tdStyle}>{p.apellidos_nombres}</td>
-                                      <td style={{ ...tdStyle, textAlign: 'center' }}>
-                                        <button
-                                          onClick={() => {
-                                            setSelectedTeacher(p);
-                                            setEditableTeacher({
-                                              apellidos_nombres: p.apellidos_nombres || '',
-                                              nombres: p.nombres || ''
-                                            });
-                                            setIsEditingTeacher(false);
-                                          }}
-                                          style={{ ...btnStyleSecondary, padding: '4px 8px', fontSize: '11px' }}
-                                        >
-                                          Ver Ficha
-                                        </button>
-                                      </td>
+                            {teacherViewMode === 'grid' ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                                {paginated.map((p) => (
+                                  <div
+                                    key={p.cedula_profesor}
+                                    onClick={() => {
+                                      setSelectedTeacher(p);
+                                      setEditableTeacher({
+                                        apellidos_nombres: p.apellidos_nombres || '',
+                                        nombres: p.nombres || ''
+                                      });
+                                      setIsEditingTeacher(false);
+                                      setShowTeacherDetailModal(true);
+                                    }}
+                                    style={{
+                                      background: 'rgba(255,255,255,0.02)',
+                                      border: '1px solid rgba(255,255,255,0.05)',
+                                      padding: '18px',
+                                      borderRadius: '16px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '12px',
+                                      boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(-4px)';
+                                      e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(99,102,241,0.08)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(0)';
+                                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#818cf8', fontWeight: 700 }}>
+                                        Docente CIPPSV
+                                      </span>
+                                      <span style={{ fontSize: '11px', background: 'rgba(167,139,250,0.1)', color: '#a78bfa', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                                        C.I. {p.cedula_profesor}
+                                      </span>
+                                    </div>
+                                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#fff', lineHeight: 1.3 }}>
+                                      {p.apellidos_nombres}
+                                    </h4>
+                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                                      Nombre: {p.nombres} {p.cid ? `| CID: ${p.cid}` : ''}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ overflowX: 'auto' }}>
+                                <table style={tableStyle}>
+                                  <thead>
+                                    <tr>
+                                      <th style={thStyle}>Cédula</th>
+                                      <th style={thStyle}>Nombre y Apellido</th>
+                                      <th style={{ ...thStyle, textAlign: 'center' }}>Acción</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                                  </thead>
+                                  <tbody>
+                                    {paginated.map((p) => (
+                                      <tr
+                                        key={p.cedula_profesor}
+                                        style={trStyle}
+                                      >
+                                        <td style={{ ...tdStyle, fontWeight: 700 }}>{p.cedula_profesor}</td>
+                                        <td style={tdStyle}>{p.apellidos_nombres}</td>
+                                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                          <button
+                                            onClick={() => {
+                                              setSelectedTeacher(p);
+                                              setEditableTeacher({
+                                                apellidos_nombres: p.apellidos_nombres || '',
+                                                nombres: p.nombres || ''
+                                              });
+                                              setIsEditingTeacher(false);
+                                              setShowTeacherDetailModal(true);
+                                            }}
+                                            style={{ ...btnStyleSecondary, padding: '4px 8px', fontSize: '11px' }}
+                                          >
+                                            Ver Ficha
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
 
                             {/* Paginación */}
                             {totalPages > 1 && (
@@ -3234,91 +3326,101 @@ export default function Home() {
                         );
                       })()}
                     </div>
+                  </div>
+                )}
 
-                    {/* Right Panel: Selected Teacher Full Details Sheet */}
-                    <div style={panelCardStyle}>
-                      {selectedTeacher ? (
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '16px' }}>
-                            <h4 style={{ margin: 0, fontSize: '18px', color: '#a78bfa', fontWeight: 700 }}>Ficha del Docente</h4>
-                            {!isEditingTeacher && (
-                              <button
-                                onClick={() => {
-                                  setEditableTeacher({
-                                    apellidos_nombres: selectedTeacher.apellidos_nombres || '',
-                                    nombres: selectedTeacher.nombres || ''
-                                  });
-                                  setIsEditingTeacher(true);
-                                }}
-                                style={{ ...btnStyleSecondary, padding: '4px 8px', fontSize: '11px' }}
-                              >
-                                ✏️ Editar
-                              </button>
-                            )}
-                          </div>
+            {/* Teacher Detail Modal */}
+            {showTeacherDetailModal && selectedTeacher && (
+              <div style={modalBackdropStyle}>
+                <div style={{ ...modalContentStyle, maxWidth: '600px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px', marginBottom: '20px' }}>
+                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#a78bfa' }}>
+                      👨‍🏫 Ficha del Docente
+                    </h3>
+                    <button
+                      onClick={() => setShowTeacherDetailModal(false)}
+                      style={{
+                        background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%',
+                        width: '36px', height: '36px', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: '16px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
 
-                          {isEditingTeacher ? (
-                            <form onSubmit={handleSaveTeacherChanges} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                              <div>
-                                <label style={labelStyle}>Cédula Profesor</label>
-                                <input type="text" disabled value={selectedTeacher.cedula_profesor} style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} />
-                              </div>
-                              <div>
-                                <label style={labelStyle}>Apellidos y Nombres (Formato completo)</label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={editableTeacher.apellidos_nombres}
-                                  onChange={(e) => setEditableTeacher({ ...editableTeacher, apellidos_nombres: e.target.value })}
-                                  style={inputStyle}
-                                />
-                              </div>
-                              <div>
-                                <label style={labelStyle}>Nombre Principal</label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={editableTeacher.nombres}
-                                  onChange={(e) => setEditableTeacher({ ...editableTeacher, nombres: e.target.value })}
-                                  style={inputStyle}
-                                />
-                              </div>
-                              <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                                <button type="submit" style={btnStylePrimary}>Guardar Cambios</button>
-                                <button type="button" onClick={() => setIsEditingTeacher(false)} style={btnStyleSecondary}>Cancelar</button>
-                              </div>
-                            </form>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px', fontSize: '14.5px' }}>
-                                <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Cédula:</span>
-                                <span style={{ fontWeight: 700, color: '#fff' }}>{selectedTeacher.cedula_profesor}</span>
-                                
-                                <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Apellidos y Nombres:</span>
-                                <span style={{ color: '#fff' }}>{selectedTeacher.apellidos_nombres}</span>
+                  {isEditingTeacher ? (
+                    <form onSubmit={handleSaveTeacherChanges} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label style={labelStyle}>Cédula Profesor</label>
+                        <input type="text" disabled value={selectedTeacher.cedula_profesor} style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Apellidos y Nombres (Formato completo)</label>
+                        <input
+                          type="text"
+                          required
+                          value={editableTeacher.apellidos_nombres}
+                          onChange={(e) => setEditableTeacher({ ...editableTeacher, apellidos_nombres: e.target.value })}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Nombre Principal</label>
+                        <input
+                          type="text"
+                          required
+                          value={editableTeacher.nombres}
+                          onChange={(e) => setEditableTeacher({ ...editableTeacher, nombres: e.target.value })}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                        <button type="submit" style={btnStylePrimary}>Guardar Cambios</button>
+                        <button type="button" onClick={() => setIsEditingTeacher(false)} style={btnStyleSecondary}>Cancelar</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px 10px', fontSize: '15px' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Cédula:</span>
+                        <span style={{ fontWeight: 700, color: '#fff' }}>{selectedTeacher.cedula_profesor}</span>
+                        
+                        <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Apellidos y Nombres:</span>
+                        <span style={{ color: '#fff' }}>{selectedTeacher.apellidos_nombres}</span>
 
-                                <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Nombre Principal:</span>
-                                <span style={{ color: '#fff' }}>{selectedTeacher.nombres}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Nombre Principal:</span>
+                        <span style={{ color: '#fff' }}>{selectedTeacher.nombres}</span>
 
-                                {selectedTeacher.cid && (
-                                  <>
-                                    <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>ID Docente (CID):</span>
-                                    <span style={{ color: '#fff' }}>{selectedTeacher.cid}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '250px', color: 'rgba(255,255,255,0.3)' }}>
-                          <span style={{ fontSize: '40px', marginBottom: '10px' }}>👨‍🏫</span>
-                          Seleccione un profesor del directorio para ver o editar su ficha
+                        {selectedTeacher.cid && (
+                          <>
+                            <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>ID Docente (CID):</span>
+                            <span style={{ color: '#fff' }}>{selectedTeacher.cid}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {profile.role <= 2 && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px', marginTop: '10px' }}>
+                          <button
+                            onClick={() => {
+                              setEditableTeacher({
+                                apellidos_nombres: selectedTeacher.apellidos_nombres || '',
+                                nombres: selectedTeacher.nombres || ''
+                              });
+                              setIsEditingTeacher(true);
+                            }}
+                            style={btnStylePrimary}
+                          >
+                            ✏️ Editar Ficha
+                          </button>
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
+            )}
 
                 {/* Create Teacher Modal */}
                 {showCreateTeacher && (
