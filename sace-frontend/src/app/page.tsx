@@ -107,7 +107,6 @@ export default function Home() {
   const [cohorteViewMode, setCohorteViewMode] = useState<'grid' | 'list'>('grid');
   const [actaSearch, setActaSearch] = useState('');
   const [actaPage, setActaPage] = useState(1);
-  const [showActaDetailModal, setShowActaDetailModal] = useState(false);
   const [newCohorte, setNewCohorte] = useState({
     codsede: '', codopest: '', codcohorte: '', periodo_lectivo: '2026-I', fecha_inicio: ''
   });
