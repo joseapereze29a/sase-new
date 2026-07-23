@@ -299,41 +299,42 @@ export default function Home() {
     }
   }, [newActa.codcohorte, newActa.codasig, apiUrl]);
 
-  function suggestProgramCode(codsede: string, tipo: string) {
+  function getProgramInitials(text: string) {
+    if (!text) return '';
+    const stopWords = new Set(['de', 'la', 'en', 'y', 'a', 'del', 'el', 'los', 'las', 'un', 'una', 'con', 'para', 'por', 'sobre', 'mencion']);
+    const words = text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter(w => w && !stopWords.has(w));
+      
+    return words.map(w => w[0].toUpperCase()).join('');
+  }
+
+  function suggestProgramCode(codsede: string, tipo: string, mencion: string, titulo: string) {
     if (!codsede) return '';
-    const matching = programs.filter((p: any) => 
-      p.codsede === codsede && 
-      (tipo ? p.tipo?.toLowerCase() === tipo.toLowerCase() : true)
-    );
+    const prefix = tipo === 'Doctorado' ? 'DR' : 
+                   tipo === 'Maestria' ? 'MC' : 
+                   tipo === 'Especializacion' ? 'ESP' : 'DIP';
+                   
+    const sourceText = (mencion || '').trim() || (titulo || '').trim();
+    if (!sourceText) return `${prefix}-`;
     
-    if (matching.length === 0) {
-      const prefix = tipo === 'Doctorado' ? 'DR' : 
-                     tipo === 'Maestria' ? 'MC' : 
-                     tipo === 'Especializacion' ? 'ESP' : 'DIP';
-      return `${prefix}-NUEVO`;
+    const initials = getProgramInitials(sourceText);
+    const suggestedCode = `${prefix}-${initials}`;
+    
+    const exists = programs.some((p: any) => p.codsede === codsede && p.codopest === suggestedCode);
+    if (!exists) {
+      return suggestedCode;
     }
     
-    matching.sort((a: any, b: any) => a.codopest.localeCompare(b.codopest));
-    const lastCode = matching[matching.length - 1].codopest;
-    
-    const matchLetter = lastCode.match(/^([A-Z0-9-]+?)([A-Z])$/);
-    if (matchLetter) {
-      const base = matchLetter[1];
-      const letter = matchLetter[2];
-      if (letter !== 'Z') {
-        const nextLetter = String.fromCharCode(letter.charCodeAt(0) + 1);
-        return `${base}${nextLetter}`;
-      }
+    let count = 2;
+    while (programs.some((p: any) => p.codsede === codsede && p.codopest === `${suggestedCode}${count}`)) {
+      count++;
     }
-    
-    const matchNumber = lastCode.match(/^([A-Z0-9-]+?)([0-9]+)$/);
-    if (matchNumber) {
-      const base = matchNumber[1];
-      const num = parseInt(matchNumber[2], 10);
-      return `${base}${num + 1}`;
-    }
-    
-    return `${lastCode}-NEW`;
+    return `${suggestedCode}${count}`;
   }
 
   function getCityFromSede(codsede: string) {
@@ -7183,42 +7184,19 @@ export default function Home() {
                         <button onClick={() => setShowCreateProgramModal(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>✕</button>
                       </div>
                       <form onSubmit={handleCreateProgram} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                          <div>
-                            <label style={labelStyle}>Sede / Núcleo de Oferta</label>
-                            <select
-                              required
-                              value={newProgramAccount.codsede}
-                              onChange={(e) => setNewProgramAccount({ ...newProgramAccount, codsede: e.target.value })}
-                              style={{ ...inputStyle, background: '#120f30' }}
-                            >
-                              <option value="">Selecciona Sede...</option>
-                              {directorioSedes.map(s => (
-                                <option key={s.codsede} value={s.codsede}>{s.ciudad} ({s.codsede})</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label style={labelStyle}>Código del Programa (codopest)</label>
-                            <input
-                              type="text" required placeholder="Ej: PP-M, PP-D, EV-G"
-                              value={newProgramAccount.codopest}
-                              onChange={(e) => setNewProgramAccount({ ...newProgramAccount, codopest: e.target.value.toUpperCase() })}
-                              style={inputStyle}
-                            />
-                            {(() => {
-                              const suggested = suggestProgramCode(newProgramAccount.codsede, newProgramAccount.tipo);
-                              if (!suggested) return null;
-                              return (
-                                <span 
-                                  onClick={() => setNewProgramAccount({ ...newProgramAccount, codopest: suggested })}
-                                  style={{ fontSize: '11px', color: '#818cf8', cursor: 'pointer', display: 'block', marginTop: '4px', textDecoration: 'underline' }}
-                                >
-                                  Sugerencia: {suggested} (hacer clic para aplicar)
-                                </span>
-                              );
-                            })()}
-                          </div>
+                        <div>
+                          <label style={labelStyle}>Sede / Núcleo de Oferta</label>
+                          <select
+                            required
+                            value={newProgramAccount.codsede}
+                            onChange={(e) => setNewProgramAccount({ ...newProgramAccount, codsede: e.target.value })}
+                            style={{ ...inputStyle, background: '#120f30' }}
+                          >
+                            <option value="">Selecciona Sede...</option>
+                            {directorioSedes.map(s => (
+                              <option key={s.codsede} value={s.codsede}>{s.ciudad} ({s.codsede})</option>
+                            ))}
+                          </select>
                         </div>
 
                         <div>
@@ -7264,6 +7242,33 @@ export default function Home() {
                               style={inputStyle}
                             />
                           </div>
+                        </div>
+
+                        <div>
+                          <label style={labelStyle}>Código del Programa (codopest)</label>
+                          <input
+                            type="text" required placeholder="Ej: DIP-DE, MC-OC, DR-CS"
+                            value={newProgramAccount.codopest}
+                            onChange={(e) => setNewProgramAccount({ ...newProgramAccount, codopest: e.target.value.toUpperCase() })}
+                            style={inputStyle}
+                          />
+                          {(() => {
+                            const suggested = suggestProgramCode(
+                              newProgramAccount.codsede,
+                              newProgramAccount.tipo,
+                              newProgramAccount.mencion_especialidad,
+                              newProgramAccount.titulo_a_otorgar
+                            );
+                            if (!suggested) return null;
+                            return (
+                              <span 
+                                onClick={() => setNewProgramAccount({ ...newProgramAccount, codopest: suggested })}
+                                style={{ fontSize: '11px', color: '#818cf8', cursor: 'pointer', display: 'block', marginTop: '4px', textDecoration: 'underline' }}
+                              >
+                                Sugerencia basada en especialidad: {suggested} (hacer clic para aplicar)
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px', marginTop: '10px' }}>
