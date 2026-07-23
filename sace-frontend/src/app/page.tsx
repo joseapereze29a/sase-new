@@ -4438,7 +4438,6 @@ export default function Home() {
                                 ))}
                               </div>
                             )}
-                          </div>
 
                             {/* Controles de Paginación */}
                             {totalPages > 1 && (
