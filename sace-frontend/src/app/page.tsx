@@ -107,6 +107,7 @@ export default function Home() {
   const [cohorteViewMode, setCohorteViewMode] = useState<'grid' | 'list'>('grid');
   const [actaSearch, setActaSearch] = useState('');
   const [actaPage, setActaPage] = useState(1);
+  const [showActaDetailModal, setShowActaDetailModal] = useState(false);
   const [newCohorte, setNewCohorte] = useState({
     codsede: '', codopest: '', codcohorte: '', periodo_lectivo: '2026-I', fecha_inicio: ''
   });
@@ -815,6 +816,7 @@ export default function Home() {
   // View details of an Acta & Load its student grades
   async function handleViewActaDetails(acta: any) {
     setSelectedActa(acta);
+    setShowActaDetailModal(true);
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/evaluaciones/notas?search=${acta.codacta}`, { headers: getHeaders() });
@@ -4132,10 +4134,10 @@ export default function Home() {
                     )}
                   </div>
                 ) : (
-                  // Teacher / Admin View: List of actas & Grades management
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '30px' }}>
+                  // Teacher / Admin View: List of actas (Full Width List)
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     
-                    {/* Left: Actas List */}
+                    {/* Actas List */}
                     <div style={panelCardStyle}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Actas de Evaluación</h3>
@@ -4259,7 +4261,7 @@ export default function Home() {
                           })
                           .sort((a, b) => b.codacta.localeCompare(a.codacta));
 
-                        const ITEMS_PER_PAGE = 5;
+                        const ITEMS_PER_PAGE = 8;
                         const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
                         const paginated = filtered.slice((actaPage - 1) * ITEMS_PER_PAGE, actaPage * ITEMS_PER_PAGE);
 
@@ -4273,38 +4275,62 @@ export default function Home() {
 
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               {paginated.map((a) => (
                                 <div
                                   key={`${a.codcohorte}-${a.codasig}-${a.codacta}`}
-                                  onClick={() => handleViewActaDetails(a)}
+                                  onClick={() => {
+                                    setSelectedActaDetail(a);
+                                    setEditableActa({
+                                      ...a,
+                                      fecha_aprobacion: a.fecha_aprobacion ? a.fecha_aprobacion.substring(0, 10) : ''
+                                    });
+                                    setIsEditingActa(false);
+                                    setActaNotasDetail([]);
+                                    setShowActaDetailModal(true);
+                                    loadActaNotasDetail(a.codacta);
+                                  }}
                                   style={{
-                                    background: selectedActa?.codacta === a.codacta ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.02)',
-                                    border: selectedActa?.codacta === a.codacta ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.05)',
-                                    padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    padding: '12px 20px',
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
                                     transition: 'all 0.2s',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '12px'
                                   }}
-                                  onMouseOver={(e) => {
-                                    if (selectedActa?.codacta !== a.codacta) {
-                                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                    }
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
                                   }}
-                                  onMouseOut={(e) => {
-                                    if (selectedActa?.codacta !== a.codacta) {
-                                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                    }
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
                                   }}
                                 >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 700, color: '#fff' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', minWidth: '150px' }}>
                                       {a.fecha_creacion ? `Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-VE')}` : 'Sin fecha'}
-                                    </span>
-                                    <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '8px' }}>
-                                      Profesor: {a.cedula_profesor || 'No asignado'}
-                                    </span>
+                                    </div>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
+                                      Asignatura: <span style={{ fontWeight: 600, color: '#a78bfa' }}>{a.asignatura_nombre} ({a.codasig})</span>
+                                    </div>
                                   </div>
-                                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '6px' }}>
-                                    Asignatura: {a.codasig} | Cohorte: {a.codcohorte} | Código Acta: {a.codacta}
+                                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                                      Cohorte: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codcohorte}</span>
+                                    </div>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                                      Código Acta: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codacta}</span>
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '6px' }}>
+                                      Profesor: {a.profesor || 'No asignado'}
+                                    </div>
+                                    <div style={{ color: '#6366f1', fontSize: '14px', fontWeight: 'bold' }}>➔</div>
                                   </div>
                                 </div>
                               ))}
@@ -4349,64 +4375,7 @@ export default function Home() {
                       })()}
                     </div>
 
-                    {/* Right: Notes Detail in Selected Acta */}
-                    <div style={panelCardStyle}>
-                      {selectedActa ? (
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '16px' }}>
-                            <div>
-                              <h4 style={{ margin: 0, fontSize: '18px', color: '#a78bfa' }}>Calificaciones del Acta</h4>
-                              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{selectedActa.codacta} ({selectedActa.codasig})</span>
-                            </div>
-                            {(profile.role <= 2 || Number(profile.username) === selectedActa.cedula_profesor) && (
-                              <button onClick={() => { setShowAddNota(true); setNewNota({ ...newNota, codacta: selectedActa.codacta }); }} style={btnStylePrimary}>
-                                + Cargar Calificación
-                              </button>
-                            )}
-                          </div>
 
-                          <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                            <table style={tableStyle}>
-                              <thead>
-                                <tr>
-                                  <th style={thStyle}>Cédula</th>
-                                  <th style={thStyle}>Estudiante</th>
-                                  <th style={thStyle}>Calificación</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {actaNotas.length === 0 ? (
-                                  <tr>
-                                    <td colSpan={3} style={{ ...tdStyle, textAlign: 'center', color: 'rgba(255,255,255,0.4)', padding: '30px' }}>
-                                      No hay notas registradas en esta acta aún.
-                                    </td>
-                                  </tr>
-                                ) : (
-                                  actaNotas.map((n, idx) => (
-                                     <tr key={`${n.cedula}-${idx}`} style={trStyle}>
-                                      <td style={{ ...tdStyle, fontWeight: 700 }}>{n.cedula}</td>
-                                      <td style={tdStyle}>
-                                        {n.nombres || n.apellidos
-                                          ? `${n.nombres} ${n.apellidos}`.trim()
-                                          : 'Cargando...'}
-                                      </td>
-                                      <td style={{ ...tdStyle, fontWeight: 700, color: getCalificacionColor(n.calificacion) }}>
-                                        {formatCalificacion(n.calificacion)}
-                                      </td>
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'rgba(255,255,255,0.3)' }}>
-                          <span style={{ fontSize: '40px', marginBottom: '10px' }}>📁</span>
-                          Selecciona un Acta de la lista para ver o cargar calificaciones
-                        </div>
-                      )}
-                    </div>
 
                   </div>
                 )}
