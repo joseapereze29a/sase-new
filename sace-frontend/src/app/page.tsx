@@ -1728,6 +1728,10 @@ export default function Home() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
+            position: 'sticky',
+            top: 0,
+            height: '100vh',
+            overflowY: 'auto'
           }}>
             <div>
               {/* Brand logo */}
