@@ -4380,7 +4380,7 @@ export default function Home() {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {paginated.map((a) => (
                                   <div
-                                    key={`${a.codcohorte}-\${a.codasig}-\${a.codacta}`}
+                                    key={`${a.codcohorte}-${a.codasig}-${a.codacta}`}
                                     onClick={() => {
                                       setSelectedActaDetail(a);
                                       setEditableActa({
