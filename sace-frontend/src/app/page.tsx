@@ -299,6 +299,43 @@ export default function Home() {
     }
   }, [newActa.codcohorte, newActa.codasig, apiUrl]);
 
+  function suggestProgramCode(codsede: string, tipo: string) {
+    if (!codsede) return '';
+    const matching = programs.filter((p: any) => 
+      p.codsede === codsede && 
+      (tipo ? p.tipo?.toLowerCase() === tipo.toLowerCase() : true)
+    );
+    
+    if (matching.length === 0) {
+      const prefix = tipo === 'Doctorado' ? 'DR' : 
+                     tipo === 'Maestria' ? 'MC' : 
+                     tipo === 'Especializacion' ? 'ESP' : 'DIP';
+      return `${prefix}-NUEVO`;
+    }
+    
+    matching.sort((a: any, b: any) => a.codopest.localeCompare(b.codopest));
+    const lastCode = matching[matching.length - 1].codopest;
+    
+    const matchLetter = lastCode.match(/^([A-Z0-9-]+?)([A-Z])$/);
+    if (matchLetter) {
+      const base = matchLetter[1];
+      const letter = matchLetter[2];
+      if (letter !== 'Z') {
+        const nextLetter = String.fromCharCode(letter.charCodeAt(0) + 1);
+        return `${base}${nextLetter}`;
+      }
+    }
+    
+    const matchNumber = lastCode.match(/^([A-Z0-9-]+?)([0-9]+)$/);
+    if (matchNumber) {
+      const base = matchNumber[1];
+      const num = parseInt(matchNumber[2], 10);
+      return `${base}${num + 1}`;
+    }
+    
+    return `${lastCode}-NEW`;
+  }
+
   function getCityFromSede(codsede: string) {
     const cleanCode = (codsede || '').toUpperCase().trim();
     const match = directorioSedes.find(s => (s.codsede || '').toUpperCase().trim() === cleanCode);
@@ -7169,6 +7206,18 @@ export default function Home() {
                               onChange={(e) => setNewProgramAccount({ ...newProgramAccount, codopest: e.target.value.toUpperCase() })}
                               style={inputStyle}
                             />
+                            {(() => {
+                              const suggested = suggestProgramCode(newProgramAccount.codsede, newProgramAccount.tipo);
+                              if (!suggested) return null;
+                              return (
+                                <span 
+                                  onClick={() => setNewProgramAccount({ ...newProgramAccount, codopest: suggested })}
+                                  style={{ fontSize: '11px', color: '#818cf8', cursor: 'pointer', display: 'block', marginTop: '4px', textDecoration: 'underline' }}
+                                >
+                                  Sugerencia: {suggested} (hacer clic para aplicar)
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
 
