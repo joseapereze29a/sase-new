@@ -313,6 +313,20 @@ export default function Home() {
     return words.map(w => w[0].toUpperCase()).join('');
   }
 
+  function getProgramInitialsExtended(text: string) {
+    if (!text) return '';
+    const stopWords = new Set(['de', 'la', 'en', 'y', 'a', 'del', 'el', 'los', 'las', 'un', 'una', 'con', 'para', 'por', 'sobre', 'mencion']);
+    const words = text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter(w => w && !stopWords.has(w));
+      
+    return words.map(w => w.substring(0, 2).toUpperCase()).join('');
+  }
+
   function suggestProgramCode(codsede: string, tipo: string, mencion: string, titulo: string) {
     if (!codsede) return '';
     const prefix = tipo === 'Doctorado' ? 'DR' : 
@@ -322,6 +336,7 @@ export default function Home() {
     const sourceText = (mencion || '').trim() || (titulo || '').trim();
     if (!sourceText) return `${prefix}-`;
     
+    // Nivel 1: Iniciales simples de la mención (ej. DIP-DE)
     const initials = getProgramInitials(sourceText);
     const suggestedCode = `${prefix}-${initials}`;
     
@@ -330,11 +345,30 @@ export default function Home() {
       return suggestedCode;
     }
     
+    // Nivel 2: Combinar iniciales de título + iniciales de mención (ej. DIP-DH-DE)
+    if (mencion && titulo) {
+      const titleInitials = getProgramInitials(titulo);
+      const combinedCode = `${prefix}-${titleInitials}-${initials}`;
+      const existsCombined = programs.some((p: any) => p.codsede === codsede && p.codopest === combinedCode);
+      if (!existsCombined) {
+        return combinedCode;
+      }
+    }
+    
+    // Nivel 3: Iniciales extendidas (2 letras de cada palabra clave, ej. DIP-DEEM)
+    const extendedInitials = getProgramInitialsExtended(sourceText);
+    const extendedCode = `${prefix}-${extendedInitials}`;
+    const existsExtended = programs.some((p: any) => p.codsede === codsede && p.codopest === extendedCode);
+    if (!existsExtended) {
+      return extendedCode;
+    }
+    
+    // Nivel 4: Secuencial por defecto si persiste el duplicado
     let count = 2;
-    while (programs.some((p: any) => p.codsede === codsede && p.codopest === `${suggestedCode}${count}`)) {
+    while (programs.some((p: any) => p.codsede === codsede && p.codopest === `${extendedCode}${count}`)) {
       count++;
     }
-    return `${suggestedCode}${count}`;
+    return `${extendedCode}${count}`;
   }
 
   function getCityFromSede(codsede: string) {
