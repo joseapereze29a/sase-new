@@ -122,6 +122,14 @@ model PensumEstudios {
   @@map("pensum_estudios")
 }
 
+model AsignaturasCatalogo {
+  codasig    String  @id @map("codasig") @db.VarChar(20)
+  asignatura String  @map("asignatura") @db.VarChar(100)
+  creditos   Int?    @map("creditos") @db.UnsignedInt
+
+  @@map("asignaturas_catalogo")
+}
+
 model UsuariosSace {
   id              Int              @id @default(autoincrement())
   user            String?          @db.VarChar(100)
