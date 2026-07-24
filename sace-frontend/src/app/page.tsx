@@ -1260,6 +1260,10 @@ export default function Home() {
   const [showSubjectSuggestions, setShowSubjectSuggestions] = useState(false);
   const [isNewSubject, setIsNewSubject] = useState(true);
 
+  const [selectedPrels, setSelectedPrels] = useState<string[]>([]);
+  const [prelSearchQuery, setPrelSearchQuery] = useState('');
+  const [showPrelSuggestions, setShowPrelSuggestions] = useState(false);
+
   async function loadAsignaturasCatalogo() {
     try {
       const res = await fetch(`${apiUrl}/academico/asignaturas-catalogo`, {
@@ -1291,6 +1295,8 @@ export default function Home() {
     if (showCreateSubjectModal) {
       loadAsignaturasCatalogo();
       setIsNewSubject(true);
+      setSelectedPrels([]);
+      setPrelSearchQuery('');
     }
   }, [showCreateSubjectModal]);
 
@@ -1301,10 +1307,7 @@ export default function Home() {
     setLoading(true);
     setMessage(null);
     try {
-      const prels = newSubjectAccount.prelacionesRaw
-        .split(',')
-        .map((p) => p.trim().toUpperCase())
-        .filter(Boolean);
+      const prels = selectedPrels;
 
       const res = await fetch(`${apiUrl}/academico/pensum`, {
         method: 'POST',
@@ -1325,6 +1328,8 @@ export default function Home() {
       if (!res.ok) throw new Error(data.message || 'Error al crear asignatura');
       setMessage({ type: 'success', text: `Asignatura "${newSubjectAccount.asignatura}" creada con éxito.` });
       setShowCreateSubjectModal(false);
+      setSelectedPrels([]);
+      setPrelSearchQuery('');
       setNewSubjectAccount({
         codasig: '',
         codasig_imp: '',
@@ -5788,14 +5793,123 @@ export default function Home() {
                             )}
                           </div>
 
-                          <div>
-                            <label style={labelStyle}>Prelaciones (Códigos separados por coma)</label>
-                            <input
-                              type="text" placeholder="Ej: PP-100, PP-99 (Vacío si no prela)"
-                              value={newSubjectAccount.prelacionesRaw}
-                              onChange={(e) => setNewSubjectAccount({ ...newSubjectAccount, prelacionesRaw: e.target.value })}
-                              style={inputStyle}
-                            />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={labelStyle}>Asignaturas Prelantes (Requisitos)</label>
+                            
+                            {/* Removable chips of selected prelations */}
+                            {selectedPrels.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+                                {selectedPrels.map(code => {
+                                  const matchingSubject = selectedProgramPensum.find(p => p.codasig === code);
+                                  const name = matchingSubject ? matchingSubject.asignatura : code;
+                                  return (
+                                    <div 
+                                      key={code}
+                                      style={{
+                                        background: 'rgba(99,102,241,0.15)',
+                                        border: '1px solid rgba(99,102,241,0.3)',
+                                        borderRadius: '8px',
+                                        padding: '4px 10px',
+                                        fontSize: '12px',
+                                        color: '#a78bfa',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                      }}
+                                    >
+                                      <span>{name} ({code})</span>
+                                      <span 
+                                        onClick={() => setSelectedPrels(selectedPrels.filter(p => p !== code))}
+                                        style={{ cursor: 'pointer', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', padding: '0 2px' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
+                                      >
+                                        ✕
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            <div style={{ position: 'relative', zIndex: 1009 }}>
+                              {/* Backdrop to close suggestions */}
+                              {showPrelSuggestions && (
+                                <div 
+                                  onClick={() => setShowPrelSuggestions(false)} 
+                                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1005 }}
+                                />
+                              )}
+
+                              <input
+                                type="text" placeholder="Escribe para buscar y agregar materias prelantes..."
+                                value={prelSearchQuery}
+                                onChange={(e) => {
+                                  setPrelSearchQuery(e.target.value);
+                                  setShowPrelSuggestions(true);
+                                }}
+                                onFocus={() => setShowPrelSuggestions(true)}
+                                style={inputStyle}
+                                autoComplete="off"
+                              />
+
+                              {/* Prelations Autocomplete suggestions */}
+                              {showPrelSuggestions && (prelSearchQuery || '').trim().length >= 1 && (
+                                (() => {
+                                  const filtered = selectedProgramPensum.filter(item => 
+                                    (item.asignatura.toLowerCase().includes(prelSearchQuery.toLowerCase()) ||
+                                     item.codasig.toLowerCase().includes(prelSearchQuery.toLowerCase())) &&
+                                    !selectedPrels.includes(item.codasig)
+                                  );
+                                  if (filtered.length === 0) return null;
+                                  return (
+                                    <div style={{
+                                      position: 'absolute',
+                                      top: '100%',
+                                      left: 0,
+                                      right: 0,
+                                      background: '#120f30',
+                                      border: '1px solid rgba(255,255,255,0.1)',
+                                      borderRadius: '8px',
+                                      maxHeight: '150px',
+                                      overflowY: 'auto',
+                                      zIndex: 1010,
+                                      boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                                      marginTop: '4px'
+                                    }}>
+                                      {filtered.map((item) => (
+                                        <div
+                                          key={item.codasig}
+                                          onClick={() => {
+                                            setSelectedPrels([...selectedPrels, item.codasig]);
+                                            setPrelSearchQuery('');
+                                            setShowPrelSuggestions(false);
+                                          }}
+                                          style={{
+                                            padding: '8px 12px',
+                                            cursor: 'pointer',
+                                            borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                            fontSize: '12.5px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            color: '#fff',
+                                            transition: 'background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                        >
+                                          <span style={{ fontWeight: 600 }}>{item.asignatura}</span>
+                                          <span style={{ fontSize: '11px', background: 'rgba(167,139,250,0.1)', color: '#a78bfa', padding: '2px 6px', borderRadius: '4px' }}>
+                                            {item.codasig}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })()
+                              )}
+                            </div>
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px', marginTop: '10px' }}>
