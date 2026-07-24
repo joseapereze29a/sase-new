@@ -1256,6 +1256,44 @@ export default function Home() {
     prelacionesRaw: '',
   });
 
+  const [asignaturasCatalogoList, setAsignaturasCatalogoList] = useState<any[]>([]);
+  const [showSubjectSuggestions, setShowSubjectSuggestions] = useState(false);
+  const [isNewSubject, setIsNewSubject] = useState(true);
+
+  async function loadAsignaturasCatalogo() {
+    try {
+      const res = await fetch(`${apiUrl}/academico/asignaturas-catalogo`, {
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      setAsignaturasCatalogoList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading subject catalog:', err);
+    }
+  }
+
+  function generateNewSubjectCodeFront(name: string) {
+    if (!name) return '';
+    const stopWords = new Set(['de', 'la', 'en', 'y', 'a', 'del', 'el', 'los', 'las', 'un', 'una', 'con', 'para', 'por', 'sobre', 'mencion']);
+    const words = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter(w => w && !stopWords.has(w));
+      
+    const initials = words.map(w => w[0].toUpperCase()).join('');
+    return `ASIG-${initials || 'MAT'}`;
+  }
+
+  useEffect(() => {
+    if (showCreateSubjectModal) {
+      loadAsignaturasCatalogo();
+      setIsNewSubject(true);
+    }
+  }, [showCreateSubjectModal]);
+
   // Subject CRUD Handlers
   async function handleCreateSubject(e: React.FormEvent) {
     e.preventDefault();
@@ -5605,35 +5643,115 @@ export default function Home() {
                           <button onClick={() => setShowCreateSubjectModal(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' }}>✕</button>
                         </div>
                         <form onSubmit={handleCreateSubject} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {/* Click listener backdrop to close suggestions */}
+                          {showSubjectSuggestions && (
+                            <div 
+                              onClick={() => setShowSubjectSuggestions(false)} 
+                              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1005 }}
+                            />
+                          )}
+
+                          <div style={{ position: 'relative', zIndex: 1010 }}>
+                            <label style={labelStyle}>Nombre de la Asignatura</label>
+                            <input
+                              type="text" required placeholder="Escribe para buscar asignatura..."
+                              value={newSubjectAccount.asignatura}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const generatedCode = generateNewSubjectCodeFront(val);
+                                setNewSubjectAccount({ 
+                                  ...newSubjectAccount, 
+                                  asignatura: val,
+                                  codasig: generatedCode,
+                                  codasig_imp: generatedCode.replace(/[^A-Z0-9]/g, '')
+                                });
+                                setIsNewSubject(true);
+                                setShowSubjectSuggestions(true);
+                              }}
+                              onFocus={() => setShowSubjectSuggestions(true)}
+                              style={inputStyle}
+                              autoComplete="off"
+                            />
+                            
+                            {/* Autocomplete Suggestions */}
+                            {showSubjectSuggestions && (newSubjectAccount.asignatura || '').trim().length >= 1 && (
+                              (() => {
+                                const filtered = asignaturasCatalogoList.filter(item => 
+                                  item.asignatura.toLowerCase().includes(newSubjectAccount.asignatura.toLowerCase())
+                                );
+                                if (filtered.length === 0) return null;
+                                return (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    background: '#120f30',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    maxHeight: '180px',
+                                    overflowY: 'auto',
+                                    zIndex: 1015,
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                                    marginTop: '4px'
+                                  }}>
+                                    {filtered.map((item) => (
+                                      <div
+                                        key={item.codasig}
+                                        onClick={() => {
+                                          setNewSubjectAccount({
+                                            ...newSubjectAccount,
+                                            asignatura: item.asignatura,
+                                            codasig: item.codasig,
+                                            codasig_imp: item.codasig.replace(/[^A-Z0-9]/g, ''),
+                                            creditos: item.creditos || 3
+                                          });
+                                          setIsNewSubject(false);
+                                          setShowSubjectSuggestions(false);
+                                        }}
+                                        style={{
+                                          padding: '10px 14px',
+                                          cursor: 'pointer',
+                                          borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                          fontSize: '13px',
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          color: '#fff',
+                                          transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                      >
+                                        <span style={{ fontWeight: 600 }}>{item.asignatura}</span>
+                                        <span style={{ fontSize: '11px', background: 'rgba(167,139,250,0.1)', color: '#a78bfa', padding: '2px 6px', borderRadius: '4px' }}>
+                                          {item.codasig} ({item.creditos} U.C.)
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()
+                            )}
+                          </div>
+
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                             <div>
-                              <label style={labelStyle}>Código de Materia</label>
+                              <label style={labelStyle}>Código de Materia (Autogenerado)</label>
                               <input
-                                type="text" required placeholder="Ej: PP-101"
+                                type="text" required disabled
                                 value={newSubjectAccount.codasig}
-                                onChange={(e) => setNewSubjectAccount({ ...newSubjectAccount, codasig: e.target.value })}
-                                style={inputStyle}
+                                style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }}
                               />
                             </div>
                             <div>
                               <label style={labelStyle}>Código Imprimible</label>
                               <input
-                                type="text" required placeholder="Ej: PP101"
+                                type="text" required disabled
                                 value={newSubjectAccount.codasig_imp}
-                                onChange={(e) => setNewSubjectAccount({ ...newSubjectAccount, codasig_imp: e.target.value })}
-                                style={inputStyle}
+                                style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }}
                               />
                             </div>
-                          </div>
-
-                          <div>
-                            <label style={labelStyle}>Nombre de la Asignatura</label>
-                            <input
-                              type="text" required placeholder="Ej: Metodología de la Investigación I"
-                              value={newSubjectAccount.asignatura}
-                              onChange={(e) => setNewSubjectAccount({ ...newSubjectAccount, asignatura: e.target.value })}
-                              style={inputStyle}
-                            />
                           </div>
 
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -5641,9 +5759,10 @@ export default function Home() {
                               <label style={labelStyle}>Unidades de Crédito</label>
                               <input
                                 type="number" required min={0}
+                                disabled={!isNewSubject}
                                 value={newSubjectAccount.creditos}
                                 onChange={(e) => setNewSubjectAccount({ ...newSubjectAccount, creditos: Number(e.target.value) })}
-                                style={inputStyle}
+                                style={{ ...inputStyle, opacity: !isNewSubject ? 0.6 : 1, cursor: !isNewSubject ? 'not-allowed' : 'text' }}
                               />
                             </div>
                             <div>
@@ -5655,6 +5774,18 @@ export default function Home() {
                                 style={inputStyle}
                               />
                             </div>
+                          </div>
+
+                          <div>
+                            {isNewSubject ? (
+                              <span style={{ display: 'inline-block', fontSize: '11px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', padding: '4px 10px', borderRadius: '8px', fontWeight: 600 }}>
+                                🆕 Nueva materia (Se registrará automáticamente en el catálogo)
+                              </span>
+                            ) : (
+                              <span style={{ display: 'inline-block', fontSize: '11px', background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '4px 10px', borderRadius: '8px', fontWeight: 600 }}>
+                                📚 Materia existente en catálogo (Mantendrá su código y créditos)
+                              </span>
+                            )}
                           </div>
 
                           <div>

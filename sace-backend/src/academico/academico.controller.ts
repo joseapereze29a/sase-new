@@ -27,6 +27,20 @@ export class AcademicoController {
   constructor(private readonly service: AcademicoService) {}
 
   // ==========================================
+  // CATALOGO DE ASIGNATURAS
+  // ==========================================
+
+  @Get('asignaturas-catalogo')
+  async findAllAsignaturasCatalogo(@Query('search') search?: string) {
+    return this.service.findAllAsignaturasCatalogo(search);
+  }
+
+  @Post('asignaturas-catalogo')
+  async createAsignaturaCatalogo(@Body() body: { asignatura: string; creditos?: number }) {
+    return this.service.createAsignaturaCatalogo(body);
+  }
+
+  // ==========================================
   // OPORTUNIDADES DE ESTUDIO
   // ==========================================
 

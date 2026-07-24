@@ -10,6 +10,79 @@ import PDFDocument from 'pdfkit';
 export class AcademicoService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAllAsignaturasCatalogo(search?: string) {
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { codasig: { contains: search } },
+        { asignatura: { contains: search } },
+      ];
+    }
+    return this.prisma.asignaturasCatalogo.findMany({
+      where,
+      orderBy: { asignatura: 'asc' },
+    });
+  }
+
+  async generateSubjectCode(name: string): Promise<string> {
+    const stopWords = new Set(['de', 'la', 'en', 'y', 'a', 'del', 'el', 'los', 'las', 'un', 'una', 'con', 'para', 'por', 'sobre', 'mencion']);
+    const words = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter(w => w && !stopWords.has(w));
+      
+    const initials = words.map(w => w[0].toUpperCase()).join('');
+    const baseCode = `ASIG-${initials || 'MAT'}`;
+    
+    let finalCode = baseCode;
+    let exists = await this.prisma.asignaturasCatalogo.findUnique({
+      where: { codasig: finalCode }
+    });
+    
+    let count = 2;
+    while (exists) {
+      finalCode = `${baseCode}${count}`;
+      exists = await this.prisma.asignaturasCatalogo.findUnique({
+        where: { codasig: finalCode }
+      });
+      count++;
+    }
+    
+    return finalCode;
+  }
+
+  async createAsignaturaCatalogo(data: { asignatura: string; creditos?: number }) {
+    const name = (data.asignatura || '').trim();
+    if (!name) {
+      throw new BadRequestException('El nombre de la asignatura es requerido.');
+    }
+
+    const existing = await this.prisma.asignaturasCatalogo.findFirst({
+      where: {
+        asignatura: {
+          equals: name
+        }
+      }
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const codasig = await this.generateSubjectCode(name);
+
+    return this.prisma.asignaturasCatalogo.create({
+      data: {
+        codasig,
+        asignatura: name,
+        creditos: data.creditos || 0,
+      },
+    });
+  }
+
   // ==========================================
   // OPORTUNIDADES DE ESTUDIO
   // ==========================================
@@ -195,6 +268,20 @@ export class AcademicoService {
       throw new BadRequestException(
         `La asignatura con código ${dto.codasig} ya existe en el pensum del programa.`,
       );
+    }
+
+    // Asegurar que la asignatura esté registrada en el catálogo general
+    const catalogExists = await this.prisma.asignaturasCatalogo.findUnique({
+      where: { codasig: dto.codasig }
+    });
+    if (!catalogExists) {
+      await this.prisma.asignaturasCatalogo.create({
+        data: {
+          codasig: dto.codasig,
+          asignatura: dto.asignatura,
+          creditos: dto.creditos || 0
+        }
+      });
     }
 
     const { prelaciones, ...pensumData } = dto;
