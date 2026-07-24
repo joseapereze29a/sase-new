@@ -26,7 +26,29 @@ export class AcademicoService {
 
   async generateSubjectCode(name: string): Promise<string> {
     const stopWords = new Set(['de', 'la', 'en', 'y', 'a', 'del', 'el', 'los', 'las', 'un', 'una', 'con', 'para', 'por', 'sobre', 'mencion']);
-    const words = name
+    
+    let baseName = name.trim();
+    let preferredNum = 1;
+    
+    const matchRoman = baseName.match(/^(.*?)\s+([IVXLCDM]+)$/i);
+    if (matchRoman) {
+      baseName = matchRoman[1].trim();
+      const romanStr = matchRoman[2].toUpperCase();
+      const romanMap: { [key: string]: number } = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+      let total = 0;
+      for (let i = 0; i < romanStr.length; i++) {
+        const current = romanMap[romanStr[i]];
+        const next = romanMap[romanStr[i + 1]];
+        if (next && current < next) {
+          total -= current;
+        } else {
+          total += current;
+        }
+      }
+      preferredNum = total || 1;
+    }
+    
+    const words = baseName
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -34,21 +56,20 @@ export class AcademicoService {
       .split(/\s+/)
       .filter(w => w && !stopWords.has(w));
       
-    const initials = words.map(w => w[0].toUpperCase()).join('');
-    const baseCode = `ASIG-${initials || 'MAT'}`;
+    const initials = words.map(w => w[0].toUpperCase()).join('') || 'MAT';
     
-    let finalCode = baseCode;
+    let num = preferredNum;
+    let finalCode = `${initials}-${String(num).padStart(3, '0')}`;
     let exists = await this.prisma.asignaturasCatalogo.findUnique({
       where: { codasig: finalCode }
     });
     
-    let count = 2;
     while (exists) {
-      finalCode = `${baseCode}${count}`;
+      num++;
+      finalCode = `${initials}-${String(num).padStart(3, '0')}`;
       exists = await this.prisma.asignaturasCatalogo.findUnique({
         where: { codasig: finalCode }
       });
-      count++;
     }
     
     return finalCode;

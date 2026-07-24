@@ -1279,7 +1279,29 @@ export default function Home() {
   function generateNewSubjectCodeFront(name: string) {
     if (!name) return '';
     const stopWords = new Set(['de', 'la', 'en', 'y', 'a', 'del', 'el', 'los', 'las', 'un', 'una', 'con', 'para', 'por', 'sobre', 'mencion']);
-    const words = name
+    
+    let baseName = name.trim();
+    let preferredNum = 1;
+    
+    const matchRoman = baseName.match(/^(.*?)\s+([IVXLCDM]+)$/i);
+    if (matchRoman) {
+      baseName = matchRoman[1].trim();
+      const romanStr = matchRoman[2].toUpperCase();
+      const romanMap: { [key: string]: number } = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+      let total = 0;
+      for (let i = 0; i < romanStr.length; i++) {
+        const current = romanMap[romanStr[i]];
+        const next = romanMap[romanStr[i + 1]];
+        if (next && current < next) {
+          total -= current;
+        } else {
+          total += current;
+        }
+      }
+      preferredNum = total || 1;
+    }
+    
+    const words = baseName
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -1287,8 +1309,17 @@ export default function Home() {
       .split(/\s+/)
       .filter(w => w && !stopWords.has(w));
       
-    const initials = words.map(w => w[0].toUpperCase()).join('');
-    return `ASIG-${initials || 'MAT'}`;
+    const initials = words.map(w => w[0].toUpperCase()).join('') || 'MAT';
+    
+    // We check locally which codes are already taken in the loaded catalog
+    let num = preferredNum;
+    let finalCode = `${initials}-${String(num).padStart(3, '0')}`;
+    while (asignaturasCatalogoList.some(item => item.codasig === finalCode)) {
+      num++;
+      finalCode = `${initials}-${String(num).padStart(3, '0')}`;
+    }
+    
+    return finalCode;
   }
 
   useEffect(() => {
