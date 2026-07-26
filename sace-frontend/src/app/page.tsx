@@ -105,6 +105,7 @@ export default function Home() {
   const [cohorteSearch, setCohorteSearch] = useState('');
   const [cohortePage, setCohortePage] = useState(1);
   const [cohorteViewMode, setCohorteViewMode] = useState<'grid' | 'list'>('grid');
+  const [cohorteSortOrder, setCohorteSortOrder] = useState<'asc' | 'desc'>('desc');
   const [actaSearch, setActaSearch] = useState('');
   const [actaPage, setActaPage] = useState(1);
   const [actaViewMode, setActaViewMode] = useState<'grid' | 'list'>('grid');
@@ -2857,7 +2858,11 @@ export default function Home() {
                           c.codopest.toLowerCase().includes(q)
                         );
                       })
-                      .sort((a, b) => a.codcohorte.localeCompare(b.codcohorte));
+                      .sort((a, b) => {
+                        const dateA = a.fecha_inicio ? new Date(a.fecha_inicio).getTime() : 0;
+                        const dateB = b.fecha_inicio ? new Date(b.fecha_inicio).getTime() : 0;
+                        return cohorteSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+                      });
 
                     const ITEMS_PER_PAGE = 6;
                     const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -2877,6 +2882,23 @@ export default function Home() {
                             }}
                             style={{ ...inputStyle, flex: 1, minWidth: '200px', margin: 0 }}
                           />
+                          <button
+                            onClick={() => setCohorteSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            style={{
+                              ...btnStyleSecondary,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '8px 16px',
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              height: '42px',
+                              margin: 0,
+                              borderColor: 'rgba(255,255,255,0.1)'
+                            }}
+                          >
+                            📅 Ordenar por Fecha: {cohorteSortOrder === 'asc' ? '⬆️ Más Antiguas primero' : '⬇️ Más Recientes primero'}
+                          </button>
                           <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
                             <button
                               onClick={() => setCohorteViewMode('grid')}
