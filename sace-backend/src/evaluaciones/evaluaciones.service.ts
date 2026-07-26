@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import PDFDocument from 'pdfkit';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateActaDto } from './dto/create-acta.dto';
 import { UpdateActaDto } from './dto/update-acta.dto';
@@ -578,5 +579,209 @@ export class EvaluacionesService {
     }
 
     return null;
+  }
+
+  async generateActaPdf(codcohorte: string, codasig: string, codacta: string, user: any): Promise<Buffer> {
+    const acta = await this.prisma.registroActas.findUnique({
+      where: {
+        codcohorte_codasig_codacta: { codcohorte, codasig, codacta },
+      },
+    });
+
+    if (!acta) {
+      throw new NotFoundException(`No se encontró el acta ${codacta}`);
+    }
+
+    const coh = await this.prisma.cohortes.findUnique({
+      where: { codcohorte },
+    });
+    if (!coh) {
+      throw new NotFoundException(`No se encontró la cohorte ${codcohorte}`);
+    }
+
+    const prog = await this.prisma.oportunidadesEstudio.findFirst({
+      where: { codopest: coh.codopest, codsede: coh.codsede },
+    });
+
+    const dir = await this.prisma.directorio_cippsv.findFirst({
+      where: { codsede: coh.codsede },
+    });
+    const ciudad = dir?.ciudad || 'Caracas';
+
+    const sub = await this.prisma.pensumEstudios.findFirst({
+      where: { codasig, codsede: coh.codsede },
+    });
+    const asignatura_nombre = sub ? sub.asignatura : 'Desconocida';
+    const creditos = sub ? sub.creditos : 0;
+    const periodo = sub ? sub.periodos : 1;
+
+    let profesor_nombre = 'No asignado';
+    if (acta.cedula_profesor) {
+      const prof = await this.prisma.profesores_cippsv.findUnique({
+        where: { cedula_profesor: acta.cedula_profesor },
+      });
+      if (prof) {
+        profesor_nombre = prof.apellidos_nombres;
+      }
+    }
+
+    const notasList = await this.prisma.notas.findMany({
+      where: { codacta },
+      orderBy: { cedula: 'asc' },
+    });
+
+    const studentCedulas = notasList.map(n => n.cedula);
+    const students = await this.prisma.datosPersonales.findMany({
+      where: { cedula: { in: studentCedulas } },
+    });
+    const studentMap = new Map(students.map(s => [s.cedula, s]));
+
+    const enrichedNotas = notasList.map(n => {
+      const s = studentMap.get(n.cedula);
+      return {
+        ...n,
+        nombres_apellidos: s ? `${s.nombres} ${s.apellidos}`.trim() : `C.I. ${n.cedula}`,
+      };
+    });
+
+    const numberToSpanishWords = (n: number): string => {
+      const words = [
+        '', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE', 'DIEZ',
+        'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO',
+        'DIECINUEVE', 'VEINTE'
+      ];
+      return words[n] || String(n);
+    };
+
+    const formatNota = (nota: number | null): string => {
+      if (nota === null) return 'PENDIENTE';
+      if (nota === 404) return 'SIN NOTA';
+      if (nota === 99) return 'REPROBADO';
+      if (nota === 100) return 'APROBADA';
+      if (nota === 110) return 'MERITORIO';
+      if (nota === 120) return 'EXCELENCIA';
+      if (nota === 212) return 'EQUIVALENCIA';
+      if (nota >= 1 && nota <= 20) {
+        return `${numberToSpanishWords(nota)} (${nota})`;
+      }
+      return String(nota);
+    };
+
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 30, size: 'A4' });
+      const buffers: Buffer[] = [];
+
+      doc.on('data', (chunk) => buffers.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', (err) => reject(err));
+
+      doc.image('logo.png', 50, 30, { width: 50 });
+
+      doc.font('Helvetica-Bold').fillColor('#000000').fontSize(10);
+      doc.text('Centro de Investigaciones Psiquiátricas, Psicológicas y', 110, 32, { align: 'center', width: 370 });
+      doc.text('Sexológicas de Venezuela', 110, 43, { align: 'center', width: 370 });
+      doc.font('Helvetica').fontSize(8.5);
+      doc.text('Coordinación Académica', 110, 54, { align: 'center', width: 370 });
+      doc.text('Oficina de Control de Estudios', 110, 65, { align: 'center', width: 370 });
+
+      const yHeaderEnd = 78;
+
+      doc.font('Helvetica-Bold').fontSize(12).fillColor('#002855');
+      doc.text('ACTA DE EVALUACIÓN ESCOLAR', 50, yHeaderEnd, { align: 'center' });
+
+      const yMeta = yHeaderEnd + 18;
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000');
+      doc.text('Programa: ', 50, yMeta, { lineBreak: false } as any)
+         .font('Helvetica').text(prog ? `${prog.tipo} en Ciencias Mención ${prog.mencion_especialidad || prog.titulo_a_otorgar}` : 'Postgrado');
+
+      doc.font('Helvetica-Bold').text('Asignatura: ', 50, yMeta + 11, { lineBreak: false } as any)
+         .font('Helvetica').text(`${asignatura_nombre} (${codasig})`);
+
+      doc.font('Helvetica-Bold').text('Profesor: ', 50, yMeta + 22, { lineBreak: false } as any)
+         .font('Helvetica').text(profesor_nombre + (acta.cedula_profesor ? ` (C.I. ${acta.cedula_profesor})` : ''));
+
+      doc.font('Helvetica-Bold').text('Código Acta: ', 350, yMeta, { lineBreak: false } as any)
+         .font('Helvetica').text(codacta);
+
+      doc.font('Helvetica-Bold').text('Cohorte: ', 350, yMeta + 11, { lineBreak: false } as any)
+         .font('Helvetica').text(codcohorte);
+
+      doc.font('Helvetica-Bold').text('Período / Créditos: ', 350, yMeta + 22, { lineBreak: false } as any)
+         .font('Helvetica').text(`P-${periodo} / ${creditos} U.C.`);
+
+      const startX = 50;
+      let currentY = yMeta + 38;
+
+      const rowHeight = 18;
+      doc.fillColor('#002855').rect(startX, currentY, 500, rowHeight).fill();
+      doc.font('Helvetica-Bold').fillColor('#ffffff').fontSize(8.5);
+      doc.text('Nº', startX + 5, currentY + 5, { width: 25, align: 'center' });
+      doc.text('Cédula', startX + 35, currentY + 5);
+      doc.text('Apellidos y Nombres del Estudiante', startX + 110, currentY + 5);
+      doc.text('Calificación Obtenida', startX + 340, currentY + 5, { width: 155, align: 'center' });
+
+      currentY += rowHeight;
+      doc.fontSize(8).fillColor('#000000');
+
+      if (enrichedNotas.length === 0) {
+        doc.fillColor('#ffffff').rect(startX, currentY, 500, rowHeight).fill();
+        doc.fillColor('#000000').font('Helvetica');
+        doc.text('No hay calificaciones cargadas en este acta.', startX + 110, currentY + 5);
+        
+        doc.strokeColor('#000000').lineWidth(0.5);
+        doc.rect(startX, currentY, 500, rowHeight).stroke();
+        currentY += rowHeight;
+      } else {
+        enrichedNotas.forEach((n, idx) => {
+          doc.fillColor('#ffffff').rect(startX, currentY, 500, rowHeight).fill();
+
+          doc.fillColor('#000000').font('Helvetica');
+          doc.text(String(idx + 1), startX + 5, currentY + 5, { width: 25, align: 'center' });
+          
+          const s = studentMap.get(n.cedula);
+          const nacLetter = s?.nacionalidad === 'Venezolana' ? 'V' : 'E';
+          doc.text(`${nacLetter}-${n.cedula.toLocaleString('es-VE')}`, startX + 35, currentY + 5);
+          doc.text(n.nombres_apellidos, startX + 110, currentY + 5, { width: 220, height: 12, ellipsis: true });
+          doc.text(formatNota(n.calificacion), startX + 340, currentY + 5, { width: 155, align: 'center' });
+
+          doc.strokeColor('#000000').lineWidth(0.5);
+          doc.moveTo(startX, currentY + rowHeight).lineTo(startX + 500, currentY + rowHeight).stroke();
+          
+          doc.moveTo(startX, currentY).lineTo(startX, currentY + rowHeight).stroke();
+          doc.moveTo(startX + 30, currentY).lineTo(startX + 30, currentY + rowHeight).stroke();
+          doc.moveTo(startX + 105, currentY).lineTo(startX + 105, currentY + rowHeight).stroke();
+          doc.moveTo(startX + 335, currentY).lineTo(startX + 335, currentY + rowHeight).stroke();
+          doc.moveTo(startX + 500, currentY).lineTo(startX + 500, currentY + rowHeight).stroke();
+
+          currentY += rowHeight;
+        });
+      }
+
+      currentY += 15;
+      
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      const today = new Date();
+      const dateString = `${ciudad}, ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}`;
+      doc.font('Helvetica').fontSize(9).text(dateString, 50, currentY);
+
+      currentY += 45;
+
+      doc.strokeColor('#000000').lineWidth(0.5);
+      doc.moveTo(50, currentY).lineTo(180, currentY).stroke();
+      doc.moveTo(215, currentY).lineTo(345, currentY).stroke();
+      doc.moveTo(370, currentY).lineTo(500, currentY).stroke();
+
+      doc.font('Helvetica').fontSize(7.5);
+      doc.text('FIRMA DEL PROFESOR', 50, currentY + 3, { align: 'center', width: 130 });
+      doc.text(`C.I. ${acta.cedula_profesor || ''}`, 50, currentY + 12, { align: 'center', width: 130 });
+
+      doc.text('Lic. Mercedes Labrador', 215, currentY + 3, { align: 'center', width: 130 });
+      doc.text('Jefe de Control de Estudios', 215, currentY + 12, { align: 'center', width: 130 });
+
+      doc.text('Esp. Herman Y. Bandez S.', 370, currentY + 3, { align: 'center', width: 130 });
+      doc.text('Secretario', 370, currentY + 12, { align: 'center', width: 130 });
+
+      doc.end();
+    });
   }
 }

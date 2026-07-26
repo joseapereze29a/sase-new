@@ -998,6 +998,34 @@ export default function Home() {
     }
   }
 
+  async function handleDownloadActaPdf(codcohorte: string, codasig: string, codacta: string) {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${apiUrl}/evaluaciones/actas/${encodeURIComponent(codcohorte)}/${encodeURIComponent(codasig)}/${encodeURIComponent(codacta)}/pdf`, {
+        headers: getHeaders()
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'No se pudo generar el PDF del acta.');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `acta_${codacta}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setMessage({ type: 'success', text: `Acta de evaluación "${codacta}" descargada correctamente.` });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSaveProfileChanges() {
     setLoading(true);
     setMessage(null);
@@ -6396,6 +6424,12 @@ export default function Home() {
                       <>
                         <button onClick={() => setShowActaDetailModal(false)} style={btnStyleSecondary}>
                           Regresar
+                        </button>
+                        <button
+                          onClick={() => handleDownloadActaPdf(selectedActaDetail.codcohorte, selectedActaDetail.codasig, selectedActaDetail.codacta)}
+                          style={{ ...btnStylePrimary, background: '#10b981' }}
+                        >
+                          🖨️ Descargar Acta PDF
                         </button>
                         {profile.role <= 2 && (
                           <button onClick={startEditingActa} style={btnStylePrimary}>

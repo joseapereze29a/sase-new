@@ -10,7 +10,9 @@ import {
   UseGuards,
   Request,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
+import * as express from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -143,5 +145,24 @@ export class EvaluacionesController {
     @Param('cedula', ParseIntPipe) cedula: number,
   ) {
     return this.service.deleteNota(codacta, cedula);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.SUPER_USUARIO, Role.ADMINISTRADOR, Role.COORDINADOR, Role.PROFESOR)
+  @Get('actas/:codcohorte/:codasig/:codacta/pdf')
+  async downloadActaPdf(
+    @Param('codcohorte') codcohorte: string,
+    @Param('codasig') codasig: string,
+    @Param('codacta') codacta: string,
+    @Request() req: any,
+    @Res() res: express.Response,
+  ) {
+    const buffer = await this.service.generateActaPdf(codcohorte, codasig, codacta, req.user);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=acta_${codacta}.pdf`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 }
