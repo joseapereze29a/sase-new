@@ -4864,7 +4864,7 @@ export default function Home() {
 
             {/* Add Nota Modal */}
             {showAddNota && (
-              <div style={modalBackdropStyle}>
+              <div style={{ ...modalBackdropStyle, zIndex: 1200 }}>
                 <div style={modalContentStyle}>
                   <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: 700 }}>Cargar Calificación en {newNota.codacta || selectedActa?.codacta}</h3>
                   <form onSubmit={handleSaveNota} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
