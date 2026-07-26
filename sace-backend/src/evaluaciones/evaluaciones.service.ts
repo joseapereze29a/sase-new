@@ -592,7 +592,7 @@ export class EvaluacionesService {
       throw new NotFoundException(`No se encontró el acta ${codacta}`);
     }
 
-    const coh = await this.prisma.cohortes.findUnique({
+    const coh = await this.prisma.cohortes.findFirst({
       where: { codcohorte },
     });
     if (!coh) {
@@ -625,18 +625,18 @@ export class EvaluacionesService {
       }
     }
 
-    const notasList = await this.prisma.notas.findMany({
+    const notasList = await this.prisma.recordNotas.findMany({
       where: { codacta },
       orderBy: { cedula: 'asc' },
     });
 
-    const studentCedulas = notasList.map(n => n.cedula);
+    const studentCedulas = notasList.map((n: any) => n.cedula);
     const students = await this.prisma.datosPersonales.findMany({
       where: { cedula: { in: studentCedulas } },
     });
     const studentMap = new Map(students.map(s => [s.cedula, s]));
 
-    const enrichedNotas = notasList.map(n => {
+    const enrichedNotas = notasList.map((n: any) => {
       const s = studentMap.get(n.cedula);
       return {
         ...n,
@@ -732,7 +732,7 @@ export class EvaluacionesService {
         doc.rect(startX, currentY, 500, rowHeight).stroke();
         currentY += rowHeight;
       } else {
-        enrichedNotas.forEach((n, idx) => {
+        enrichedNotas.forEach((n: any, idx: number) => {
           doc.fillColor('#ffffff').rect(startX, currentY, 500, rowHeight).fill();
 
           doc.fillColor('#000000').font('Helvetica');
