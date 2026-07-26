@@ -299,7 +299,7 @@ export class AcademicoService {
       await this.prisma.asignaturasCatalogo.create({
         data: {
           codasig: dto.codasig,
-          asignatura: dto.asignatura,
+          asignatura: dto.asignatura || '',
           creditos: dto.creditos || 0
         }
       });
