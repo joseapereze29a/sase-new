@@ -27,7 +27,6 @@ export class EvaluacionesService {
     const { skip, take, search, codcohorte } = params;
     const where: any = {};
 
-    // Si es Profesor, filtrar solo las asignadas a él
     if (user.role === Role.PROFESOR) {
       where.cedula_profesor = Number(user.username);
     }
@@ -54,31 +53,55 @@ export class EvaluacionesService {
       this.prisma.registroActas.count({ where }),
     ]);
 
-    // Obtener detalles de profesores y asignaturas en lote para enriquecer las actas
     const profCedulas = [...new Set(items.map((i) => i.cedula_profesor).filter((c): c is number => typeof c === 'number'))];
     const asigCodes = [...new Set(items.map((i) => i.codasig).filter((c): c is string => typeof c === 'string'))];
+    const cohCodes = [...new Set(items.map((i) => i.codcohorte).filter((c): c is string => typeof c === 'string'))];
 
-    const [profesores, subjects] = await Promise.all([
+    const [profesores, subjects, cohortesList] = await Promise.all([
       this.prisma.profesores_cippsv.findMany({
         where: { cedula_profesor: { in: profCedulas } },
       }),
       this.prisma.pensumEstudios.findMany({
         where: { codasig: { in: asigCodes } },
       }),
+      this.prisma.cohortes.findMany({
+        where: { codcohorte: { in: cohCodes } },
+      }),
     ]);
+
+    const uniquePrograms = [...new Set(cohortesList.map((c) => `${c.codsede}_${c.codopest}`))];
+    let programasList: any[] = [];
+    if (uniquePrograms.length > 0) {
+      programasList = await this.prisma.oportunidadesEstudio.findMany({
+        where: {
+          OR: uniquePrograms.map(p => {
+            const [codsede, codopest] = p.split('_');
+            return { codsede, codopest };
+          })
+        }
+      });
+    }
 
     const profMap = new Map(profesores.map((p) => [p.cedula_profesor, p]));
     const subjectMap = new Map(subjects.map((s) => [s.codasig, s]));
+    const cohorteMap = new Map(cohortesList.map((c) => [c.codcohorte, c]));
+    const programaMap = new Map(programasList.map((p) => [`${p.codsede}_${p.codopest}`, p]));
 
     const enrichedItems = items.map((item) => {
       const prof = item.cedula_profesor ? profMap.get(item.cedula_profesor) : null;
       const sub = item.codasig ? subjectMap.get(item.codasig) : null;
+      const coh = item.codcohorte ? cohorteMap.get(item.codcohorte) : null;
+      const progKey = coh ? `${coh.codsede}_${coh.codopest}` : '';
+      const prog = progKey ? programaMap.get(progKey) : null;
+
       return {
         ...item,
         profesor: prof ? `${prof.apellidos_nombres}`.trim() : `C.I. ${item.cedula_profesor}`,
         asignatura_nombre: sub ? sub.asignatura : 'Desconocida',
         periodo: sub ? sub.periodos : null,
         creditos: sub ? sub.creditos : null,
+        programa_nombre: prog ? (prog.mencion_especialidad || prog.titulo_a_otorgar) : 'Desconocido',
+        cohorte_fecha_inicio: coh ? coh.fecha_inicio : null,
       };
     });
 

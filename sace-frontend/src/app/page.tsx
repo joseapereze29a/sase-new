@@ -4433,7 +4433,7 @@ export default function Home() {
                             <option value="">Todos</option>
                             {filterPrograms.map(prog => (
                               <option key={prog.codopest} value={prog.codopest}>
-                                {prog.codopest}
+                                {prog.mencion_especialidad || prog.titulo_a_otorgar} ({prog.tipo})
                               </option>
                             ))}
                           </select>
@@ -4454,7 +4454,7 @@ export default function Home() {
                             <option value="">Todas</option>
                             {filterCohortes.map(c => (
                               <option key={c.codcohorte} value={c.codcohorte}>
-                                {c.codcohorte}
+                                {c.fecha_inicio ? new Date(c.fecha_inicio).toLocaleDateString('es-VE') : c.codcohorte}
                               </option>
                             ))}
                           </select>
@@ -4618,7 +4618,8 @@ export default function Home() {
                                     </h4>
                                     <div style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
                                       <div>📅 <span style={{ color: '#fff', fontWeight: 500 }}>{a.fecha_creacion ? new Date(a.fecha_creacion).toLocaleDateString('es-VE') : 'Sin fecha'}</span></div>
-                                      <div>👥 Cohorte: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.codcohorte}</span></div>
+                                      <div>🎓 Programa: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.programa_nombre}</span></div>
+                                      <div>👥 Cohorte: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.cohorte_fecha_inicio ? new Date(a.cohorte_fecha_inicio).toLocaleDateString('es-VE') : a.codcohorte}</span></div>
                                       <div>👨‍🏫 Profesor: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.profesor || 'No asignado'}</span></div>
                                     </div>
                                   </div>
@@ -4672,7 +4673,10 @@ export default function Home() {
                                     </div>
                                     <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                                        Cohorte: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codcohorte}</span>
+                                        Programa: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.programa_nombre}</span>
+                                      </div>
+                                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                                        Cohorte: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.cohorte_fecha_inicio ? new Date(a.cohorte_fecha_inicio).toLocaleDateString('es-VE') : a.codcohorte}</span>
                                       </div>
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
                                         Código Acta: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codacta}</span>
@@ -4768,7 +4772,7 @@ export default function Home() {
                           <option value="" disabled>Seleccione Programa...</option>
                           {actaPrograms.map(prog => (
                             <option key={prog.codopest} value={prog.codopest}>
-                              {prog.codopest} - {prog.mencion_especialidad} ({prog.tipo})
+                              {prog.mencion_especialidad || prog.titulo_a_otorgar} ({prog.tipo})
                             </option>
                           ))}
                         </select>
@@ -4789,7 +4793,7 @@ export default function Home() {
                           <option value="" disabled>Seleccione Cohorte...</option>
                           {actaCohortes.map(c => (
                             <option key={c.codcohorte} value={c.codcohorte}>
-                              {c.codcohorte} (Lectivo: {c.periodo_lectivo})
+                              {c.fecha_inicio ? new Date(c.fecha_inicio).toLocaleDateString('es-VE') : c.codcohorte} (Lectivo: {c.periodo_lectivo})
                             </option>
                           ))}
                         </select>
