@@ -347,28 +347,80 @@ export class DatosPersonalesService {
     
     const notesWithCredits = [];
 
-    for (const note of espNotes) {
-      const asig = await this.prisma.pensumEstudios.findFirst({
-        where: { codasig: note.codasig, codsede: esp.codsede }
-      });
-      const credits = asig?.creditos || 0;
-      const score = note.calificacion;
-      
-      if (score !== null && score >= 1 && score <= 20 && credits > 0) {
-        totalPonderado += score * credits;
-        totalCreditos += credits;
-      }
-      
-      const isApproved = (score !== null && (score >= 15 || [100, 110, 120, 212].includes(score)));
-      if (isApproved) {
-        approvedCreditos += credits;
-      }
+    // Obtener todo el pensum de este programa
+    const fullPensum = await this.prisma.pensumEstudios.findMany({
+      where: {
+        codsede: esp.codsede,
+        codopest: esp.codopest
+      },
+      orderBy: [
+        { periodos: 'asc' },
+        { asignatura: 'asc' }
+      ]
+    });
 
-      notesWithCredits.push({
-        ...note,
-        creditos: credits,
-        codasig_imp: asig?.codasig_imp || note.codasig
-      });
+    if (fullPensum.length > 0) {
+      for (const asig of fullPensum) {
+        const note = espNotes.find(n => normalize(n.codasig) === normalize(asig.codasig));
+        if (note) {
+          const score = note.calificacion;
+          const credits = asig.creditos || 0;
+          
+          if (score !== null && score >= 1 && score <= 20 && credits > 0) {
+            totalPonderado += score * credits;
+            totalCreditos += credits;
+          }
+          
+          const isApproved = (score !== null && (score >= 15 || [100, 110, 120, 212].includes(score)));
+          if (isApproved) {
+            approvedCreditos += credits;
+          }
+
+          notesWithCredits.push({
+            ...note,
+            periodo: asig.periodos,
+            creditos: credits,
+            codasig_imp: asig.codasig_imp || note.codasig,
+            asignatura: asig.asignatura,
+            noCursado: false
+          });
+        } else {
+          notesWithCredits.push({
+            codasig: asig.codasig,
+            codasig_imp: asig.codasig_imp || asig.codasig,
+            asignatura: asig.asignatura,
+            creditos: asig.creditos || 0,
+            calificacion: null,
+            periodo: asig.periodos,
+            noCursado: true
+          });
+        }
+      }
+    } else {
+      for (const note of espNotes) {
+        const asig = await this.prisma.pensumEstudios.findFirst({
+          where: { codasig: note.codasig, codsede: esp.codsede }
+        });
+        const credits = asig?.creditos || 0;
+        const score = note.calificacion;
+        
+        if (score !== null && score >= 1 && score <= 20 && credits > 0) {
+          totalPonderado += score * credits;
+          totalCreditos += credits;
+        }
+        
+        const isApproved = (score !== null && (score >= 15 || [100, 110, 120, 212].includes(score)));
+        if (isApproved) {
+          approvedCreditos += credits;
+        }
+
+        notesWithCredits.push({
+          ...note,
+          creditos: credits,
+          codasig_imp: asig?.codasig_imp || note.codasig,
+          noCursado: false
+        });
+      }
     }
 
     const promedio = totalCreditos > 0 ? (totalPonderado / totalCreditos).toFixed(2).replace('.', ',') : '0,00';
@@ -399,7 +451,8 @@ export class DatosPersonalesService {
       return words[n] || String(n);
     };
 
-    const formatNota = (nota: number | null): string => {
+    const formatNota = (nota: number | null, noCursado?: boolean): string => {
+      if (noCursado) return 'NO CURSADO';
       if (nota === null) return 'PENDIENTE';
       if (nota === 404) return 'SIN NOTA';
       if (nota === 99) return 'REPROBADO';
@@ -493,7 +546,7 @@ export class DatosPersonalesService {
           doc.text(note.codasig_imp, startX + 10, currentY + 5);
           doc.text(note.asignatura, startX + 80, currentY + 5, { width: 200, height: 12, ellipsis: true });
           doc.text(String(note.creditos), startX + 285, currentY + 5, { width: 45, align: 'center' });
-          doc.text(formatNota(note.calificacion), startX + 335, currentY + 5, { width: 110, align: 'center' });
+          doc.text(formatNota(note.calificacion, note.noCursado), startX + 335, currentY + 5, { width: 110, align: 'center' });
           doc.text(note.periodo !== null ? String(note.periodo) : 'S/P', startX + 450, currentY + 5, { width: 45, align: 'center' });
 
           // Dibujar bordes de celda (borde inferior)
