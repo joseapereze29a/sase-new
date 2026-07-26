@@ -282,7 +282,7 @@ export default function Home() {
 
       // Consultar sugerencia de profesor en el backend
       fetch(`${apiUrl}/evaluaciones/sugerir-profesor?codasig=${encodeURIComponent(newActa.codasig)}`, { headers: getHeaders() })
-        .then(res => res.json())
+        .then(res => res.text().then(text => text ? JSON.parse(text) : null))
         .then(data => {
           if (data && data.cedula_profesor) {
             setNewActa(prev => ({ ...prev, cedula_profesor: String(data.cedula_profesor) }));
