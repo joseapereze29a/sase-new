@@ -36,14 +36,11 @@ services:
   sace-backend:
     build:
       context: ./sace-backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: sace-backend
     restart: always
     ports:
       - "4005:4000"
-    volumes:
-      - ./sace-backend:/app
-      - /app/node_modules
     environment:
       DATABASE_URL: mysql://root:root_password_123@sace-db:3306/cippsv_ce
       PORT: 4000
@@ -56,14 +53,11 @@ services:
   sace-frontend:
     build:
       context: ./sace-frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: sace-frontend
     restart: always
     ports:
       - "3005:3000"
-    volumes:
-      - ./sace-frontend:/app
-      - /app/node_modules
     environment:
       NEXT_PUBLIC_API_URL: http://localhost/api
     depends_on:
