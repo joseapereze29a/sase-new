@@ -426,7 +426,7 @@ export class EvaluacionesService {
           where: { codasig: req.prelacion },
           select: { codacta: true },
         });
-        const actasCodes = [...ordActas.map((a) => a.codacta), ...multiActas.map((ma) => ma.codacta)];
+        const actasCodes = [...ordActas.map((a: any) => a.codacta), ...multiActas.map((ma: any) => ma.codacta)];
 
         // Buscar en record_notas si hay nota aprobatoria en alguna de esas actas
         const approvedNote = await this.prisma.recordNotas.findFirst({
@@ -634,10 +634,10 @@ export class EvaluacionesService {
     const students = await this.prisma.datosPersonales.findMany({
       where: { cedula: { in: studentCedulas } },
     });
-    const studentMap = new Map(students.map(s => [s.cedula, s]));
+    const studentMap = new Map(students.map((s: any) => [s.cedula, s]));
 
     const enrichedNotas = notasList.map((n: any) => {
-      const s = studentMap.get(n.cedula);
+      const s: any = studentMap.get(n.cedula);
       return {
         ...n,
         nombres_apellidos: s ? `${s.nombres} ${s.apellidos}`.trim() : `C.I. ${n.cedula}`,
@@ -738,7 +738,7 @@ export class EvaluacionesService {
           doc.fillColor('#000000').font('Helvetica');
           doc.text(String(idx + 1), startX + 5, currentY + 5, { width: 25, align: 'center' });
           
-          const s = studentMap.get(n.cedula);
+          const s: any = studentMap.get(n.cedula);
           const nacLetter = s?.nacionalidad === 'Venezolana' ? 'V' : 'E';
           doc.text(`${nacLetter}-${n.cedula.toLocaleString('es-VE')}`, startX + 35, currentY + 5);
           doc.text(n.nombres_apellidos, startX + 110, currentY + 5, { width: 220, height: 12, ellipsis: true });
