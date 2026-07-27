@@ -20,6 +20,7 @@ node_modules/
 
 # Temporary PDFs and PNGs
 *.png
+!**/logo.png
 test_*.pdf
 parents_*.png
 orientacion_*.png
