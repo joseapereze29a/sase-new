@@ -147,6 +147,7 @@ export default function Home() {
   const [newActa, setNewActa] = useState({
     codcohorte: '', codasig: '', codacta: '', cedula_profesor: ''
   });
+  const [additionalProfs, setAdditionalProfs] = useState<string[]>([]);
   const [actaSelectedCity, setActaSelectedCity] = useState('');
   const [actaPrograms, setActaPrograms] = useState<any[]>([]);
   const [actaSelectedProgramCode, setActaSelectedProgramCode] = useState('');
@@ -886,7 +887,8 @@ export default function Home() {
           codcohorte: newActa.codcohorte,
           codasig: newActa.codasig,
           codacta: newActa.codacta,
-          cedula_profesor: newActa.cedula_profesor ? Number(newActa.cedula_profesor) : undefined
+          cedula_profesor: newActa.cedula_profesor ? Number(newActa.cedula_profesor) : undefined,
+          cedulas_profesores: additionalProfs.map(Number).filter(n => !isNaN(n) && n > 0)
         }),
       });
       const data = await res.json();
@@ -895,6 +897,7 @@ export default function Home() {
       setActas([data, ...actas]);
       setShowCreateActa(false);
       setNewActa({ codcohorte: '', codasig: '', codacta: '', cedula_profesor: '' });
+      setAdditionalProfs([]);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
     } finally {
@@ -4916,6 +4919,77 @@ export default function Home() {
                         </span>
                       )}
                     </div>
+
+                    {(() => {
+                      const selectedSubject = actaSubjects.find(s => s.codasig === newActa.codasig);
+                      const isTrabajoDeGrado = selectedSubject && (
+                        /trabajo.*grado/i.test(selectedSubject.asignatura) ||
+                        /tesis.*doctoral/i.test(selectedSubject.asignatura) ||
+                        /trabajo.*especial/i.test(selectedSubject.asignatura)
+                      );
+                      
+                      if (!isTrabajoDeGrado) return null;
+
+                      return (
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#a78bfa' }}>
+                            🎓 Jurados / Co-tutores de Trabajo de Grado
+                          </div>
+                          {additionalProfs.map((cedula, index) => (
+                            <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                              <div style={{ flex: 1 }}>
+                                <label style={{ ...labelStyle, fontSize: '11.5px' }}>Cédula de Jurado/Co-tutor {index + 2}</label>
+                                <input
+                                  type="number"
+                                  placeholder={`C.I. Docente ${index + 2}...`}
+                                  value={cedula}
+                                  onChange={(e) => {
+                                    const updated = [...additionalProfs];
+                                    updated[index] = e.target.value;
+                                    setAdditionalProfs(updated);
+                                  }}
+                                  style={{ ...inputStyle, height: '36px' }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAdditionalProfs(additionalProfs.filter((_, i) => i !== index));
+                                }}
+                                style={{
+                                  ...btnStyleSecondary,
+                                  height: '36px',
+                                  padding: '0 12px',
+                                  fontSize: '12px',
+                                  borderColor: 'rgba(248,113,113,0.4)',
+                                  color: '#f87171',
+                                  background: 'rgba(248,113,113,0.05)'
+                                }}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          ))}
+                          {additionalProfs.length < 4 && (
+                            <button
+                              type="button"
+                              onClick={() => setAdditionalProfs([...additionalProfs, ''])}
+                              style={{
+                                ...btnStyleSecondary,
+                                alignSelf: 'flex-start',
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                borderColor: 'rgba(167,139,250,0.4)',
+                                color: '#a78bfa',
+                                background: 'rgba(167,139,250,0.05)'
+                              }}
+                            >
+                              + Agregar Profesor
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     <div style={{ display: 'flex', justifySelf: 'flex-end', gap: '12px', marginTop: '10px' }}>
                       <button type="button" onClick={() => setShowCreateActa(false)} style={btnStyleSecondary}>Cancelar</button>

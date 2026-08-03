@@ -54,13 +54,31 @@ export class EvaluacionesService {
       this.prisma.registroActas.count({ where }),
     ]);
 
-    const profCedulas = [...new Set(items.map((i) => i.cedula_profesor).filter((c): c is number => typeof c === 'number'))];
+    const actasCodes = items.map((i) => i.codacta);
+    const multiActasList = await this.prisma.multiactas.findMany({
+      where: { codacta: { in: actasCodes } },
+    });
+    const multiActaMap = new Map(multiActasList.map((ma) => [ma.codacta, ma]));
+
+    const profCedulas = new Set<number>();
+    items.forEach((i) => {
+      if (i.cedula_profesor) profCedulas.add(i.cedula_profesor);
+      const ma = multiActaMap.get(i.codacta);
+      if (ma) {
+        if (ma.cedula_profesor1) profCedulas.add(ma.cedula_profesor1);
+        if (ma.cedula_profesor2) profCedulas.add(ma.cedula_profesor2);
+        if (ma.cedula_profesor3) profCedulas.add(ma.cedula_profesor3);
+        if (ma.cedula_profesor4) profCedulas.add(ma.cedula_profesor4);
+        if (ma.cedula_profesor5) profCedulas.add(ma.cedula_profesor5);
+      }
+    });
+
     const asigCodes = [...new Set(items.map((i) => i.codasig).filter((c): c is string => typeof c === 'string'))];
     const cohCodes = [...new Set(items.map((i) => i.codcohorte).filter((c): c is string => typeof c === 'string'))];
 
     const [profesores, subjects, cohortesList] = await Promise.all([
       this.prisma.profesores_cippsv.findMany({
-        where: { cedula_profesor: { in: profCedulas } },
+        where: { cedula_profesor: { in: Array.from(profCedulas) } },
       }),
       this.prisma.pensumEstudios.findMany({
         where: { codasig: { in: asigCodes } },
@@ -89,15 +107,46 @@ export class EvaluacionesService {
     const programaMap = new Map(programasList.map((p) => [`${p.codsede}_${p.codopest}`, p]));
 
     const enrichedItems = items.map((item) => {
-      const prof = item.cedula_profesor ? profMap.get(item.cedula_profesor) : null;
       const sub = item.codasig ? subjectMap.get(item.codasig) : null;
       const coh = item.codcohorte ? cohorteMap.get(item.codcohorte) : null;
       const progKey = coh ? `${coh.codsede}_${coh.codopest}` : '';
       const prog = progKey ? programaMap.get(progKey) : null;
 
+      const ma = multiActaMap.get(item.codacta);
+      let profesor = 'No asignado';
+      
+      if (ma) {
+        const maCedulas = [
+          ma.cedula_profesor1,
+          ma.cedula_profesor2,
+          ma.cedula_profesor3,
+          ma.cedula_profesor4,
+          ma.cedula_profesor5
+        ].filter((c): c is number => typeof c === 'number' && c > 0);
+
+        if (maCedulas.length > 0) {
+          const names = maCedulas
+            .map(c => profMap.get(c)?.apellidos_nombres)
+            .filter((name): name is string => typeof name === 'string' && name.trim() !== '');
+          if (names.length > 0) {
+            profesor = names.join(' / ');
+          }
+        }
+      } else if (item.cedula_profesor) {
+        const prof = profMap.get(item.cedula_profesor);
+        profesor = prof ? `${prof.apellidos_nombres}`.trim() : `C.I. ${item.cedula_profesor}`;
+      }
+
       return {
         ...item,
-        profesor: prof ? `${prof.apellidos_nombres}`.trim() : `C.I. ${item.cedula_profesor}`,
+        profesor,
+        cedulas_profesores: ma ? [
+          ma.cedula_profesor1,
+          ma.cedula_profesor2,
+          ma.cedula_profesor3,
+          ma.cedula_profesor4,
+          ma.cedula_profesor5
+        ].filter((c): c is number => typeof c === 'number' && c > 0) : (item.cedula_profesor ? [item.cedula_profesor] : []),
         asignatura_nombre: sub ? sub.asignatura : 'Desconocida',
         periodo: sub ? sub.periodos : null,
         creditos: sub ? sub.creditos : null,
@@ -123,8 +172,11 @@ export class EvaluacionesService {
     }
 
     // Validar asignación si es Profesor
-    if (user.role === Role.PROFESOR && record.cedula_profesor !== Number(user.username)) {
-      throw new ForbiddenException('No tienes permiso para ver los detalles de esta acta.');
+    if (user.role === Role.PROFESOR) {
+      const assigned = await this.isProfessorAssignedToActa(codacta, Number(user.username));
+      if (!assigned) {
+        throw new ForbiddenException('No tienes permiso para ver los detalles de esta acta.');
+      }
     }
 
     return record;
@@ -163,13 +215,24 @@ export class EvaluacionesService {
       );
     }
 
-    // 3. Validar profesor si es provisto
+    // 3. Validar profesores
     if (dto.cedula_profesor) {
       const prof = await this.prisma.profesores_cippsv.findUnique({
         where: { cedula_profesor: dto.cedula_profesor },
       });
       if (!prof) {
         throw new BadRequestException(`El profesor con cédula ${dto.cedula_profesor} no existe.`);
+      }
+    }
+
+    if (dto.cedulas_profesores && dto.cedulas_profesores.length > 0) {
+      for (const cedula of dto.cedulas_profesores) {
+        const prof = await this.prisma.profesores_cippsv.findUnique({
+          where: { cedula_profesor: cedula },
+        });
+        if (!prof) {
+          throw new BadRequestException(`El profesor adicional con cédula ${cedula} no existe.`);
+        }
       }
     }
 
@@ -189,20 +252,47 @@ export class EvaluacionesService {
       );
     }
 
+    const mainCedula = dto.cedula_profesor || (dto.cedulas_profesores && dto.cedulas_profesores[0]) || null;
+
     const data: any = {
       codcohorte: dto.codcohorte,
       codasig: dto.codasig,
       codacta: dto.codacta,
-      cedula_profesor: dto.cedula_profesor,
+      cedula_profesor: mainCedula,
       fecha_creacion: new Date(),
     };
     if (dto.fecha_aprobacion) {
       data.fecha_aprobacion = new Date(dto.fecha_aprobacion);
     }
 
-    return this.prisma.registroActas.create({
+    const createdActa = await this.prisma.registroActas.create({
       data,
     });
+
+    if (dto.cedulas_profesores && dto.cedulas_profesores.length > 0) {
+      let teachersList = [...dto.cedulas_profesores];
+      if (mainCedula && !teachersList.includes(mainCedula)) {
+        teachersList.unshift(mainCedula);
+      }
+      teachersList = [...new Set(teachersList)];
+
+      await this.prisma.multiactas.create({
+        data: {
+          codcohorte: dto.codcohorte,
+          codasig: dto.codasig,
+          codacta: dto.codacta,
+          cedula_profesor1: teachersList[0] || null,
+          cedula_profesor2: teachersList[1] || null,
+          cedula_profesor3: teachersList[2] || null,
+          cedula_profesor4: teachersList[3] || null,
+          cedula_profesor5: teachersList[4] || null,
+          fecha_creacion: new Date(),
+          fecha_aprobacion: dto.fecha_aprobacion ? new Date(dto.fecha_aprobacion) : null,
+        }
+      });
+    }
+
+    return createdActa;
   }
 
   async updateActa(
@@ -280,11 +370,7 @@ export class EvaluacionesService {
       where.cedula = Number(user.username);
     } else if (user.role === Role.PROFESOR) {
       // Profesores solo ven notas de actas asignadas a ellos
-      const actas = await this.prisma.registroActas.findMany({
-        where: { cedula_profesor: Number(user.username) },
-        select: { codacta: true },
-      });
-      const codactas = actas.map((a) => a.codacta);
+      const codactas = await this.getProfessorAssignedActas(Number(user.username));
       where.codacta = { in: codactas };
     }
 
@@ -356,10 +442,8 @@ export class EvaluacionesService {
 
     if (user.role === Role.PROFESOR) {
       // Verificar si el acta pertenece al profesor
-      const acta = await this.prisma.registroActas.findFirst({
-        where: { codacta, cedula_profesor: Number(user.username) },
-      });
-      if (!acta) {
+      const assigned = await this.isProfessorAssignedToActa(codacta, Number(user.username));
+      if (!assigned) {
         throw new ForbiddenException('No tienes permiso para ver esta calificación.');
       }
     }
@@ -370,10 +454,8 @@ export class EvaluacionesService {
   async createNota(dto: CreateNotaDto, user: any) {
     // 1. Si es Profesor, validar asignación
     if (user.role === Role.PROFESOR) {
-      const acta = await this.prisma.registroActas.findFirst({
-        where: { codacta: dto.codacta, cedula_profesor: Number(user.username) },
-      });
-      if (!acta) {
+      const assigned = await this.isProfessorAssignedToActa(dto.codacta, Number(user.username));
+      if (!assigned) {
         throw new ForbiddenException('No tienes permiso para registrar notas en este acta.');
       }
     }
@@ -482,10 +564,8 @@ export class EvaluacionesService {
 
     // Si es Profesor, validar asignación del acta
     if (user.role === Role.PROFESOR) {
-      const acta = await this.prisma.registroActas.findFirst({
-        where: { codacta, cedula_profesor: Number(user.username) },
-      });
-      if (!acta) {
+      const assigned = await this.isProfessorAssignedToActa(codacta, Number(user.username));
+      if (!assigned) {
         throw new ForbiddenException('No tienes permiso para modificar notas en este acta.');
       }
     }
@@ -616,7 +696,33 @@ export class EvaluacionesService {
     const periodo = sub ? sub.periodos : 1;
 
     let profesor_nombre = 'No asignado';
-    if (acta.cedula_profesor) {
+    const multiacta = await this.prisma.multiactas.findFirst({
+      where: { codacta },
+    });
+
+    if (multiacta) {
+      const profCedulas = [
+        multiacta.cedula_profesor1,
+        multiacta.cedula_profesor2,
+        multiacta.cedula_profesor3,
+        multiacta.cedula_profesor4,
+        multiacta.cedula_profesor5
+      ].filter((c): c is number => typeof c === 'number' && c > 0);
+
+      if (profCedulas.length > 0) {
+        const profs = await this.prisma.profesores_cippsv.findMany({
+          where: { cedula_profesor: { in: profCedulas } },
+        });
+        const profMap = new Map(profs.map(p => [p.cedula_profesor, p]));
+        const orderedNames = profCedulas
+          .map(c => profMap.get(c)?.apellidos_nombres)
+          .filter((name): name is string => typeof name === 'string' && name.trim() !== '');
+
+        if (orderedNames.length > 0) {
+          profesor_nombre = orderedNames.join(' / ');
+        }
+      }
+    } else if (acta.cedula_profesor) {
       const prof = await this.prisma.profesores_cippsv.findUnique({
         where: { cedula_profesor: acta.cedula_profesor },
       });
@@ -783,5 +889,50 @@ export class EvaluacionesService {
 
       doc.end();
     });
+  }
+
+  async isProfessorAssignedToActa(codacta: string, cedulaProf: number): Promise<boolean> {
+    const mainAssigned = await this.prisma.registroActas.findFirst({
+      where: { codacta, cedula_profesor: cedulaProf },
+    });
+    if (mainAssigned) return true;
+
+    const multiAssigned = await this.prisma.multiactas.findFirst({
+      where: {
+        codacta,
+        OR: [
+          { cedula_profesor1: cedulaProf },
+          { cedula_profesor2: cedulaProf },
+          { cedula_profesor3: cedulaProf },
+          { cedula_profesor4: cedulaProf },
+          { cedula_profesor5: cedulaProf },
+        ]
+      }
+    });
+    return !!multiAssigned;
+  }
+
+  async getProfessorAssignedActas(cedulaProf: number): Promise<string[]> {
+    const mainActas = await this.prisma.registroActas.findMany({
+      where: { cedula_profesor: cedulaProf },
+      select: { codacta: true },
+    });
+    const mainCodes = mainActas.map(a => a.codacta);
+
+    const multiActas = await this.prisma.multiactas.findMany({
+      where: {
+        OR: [
+          { cedula_profesor1: cedulaProf },
+          { cedula_profesor2: cedulaProf },
+          { cedula_profesor3: cedulaProf },
+          { cedula_profesor4: cedulaProf },
+          { cedula_profesor5: cedulaProf },
+        ]
+      },
+      select: { codacta: true },
+    });
+    const multiCodes = multiActas.map(a => a.codacta);
+
+    return [...new Set([...mainCodes, ...multiCodes])];
   }
 }

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsDateString, IsArray } from 'class-validator';
 
 export class CreateActaDto {
   @IsString()
@@ -16,6 +16,11 @@ export class CreateActaDto {
   @IsInt()
   @IsOptional()
   cedula_profesor?: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  cedulas_profesores?: number[];
 
   @IsDateString()
   @IsOptional()
