@@ -70,4 +70,9 @@ export class AuthController {
   async updateUser(@Param('id', ParseIntPipe) id: number, @Body() dto: any) {
     return this.authService.updateUser(id, dto);
   }
+
+  @Post('first-time-student')
+  async firstTimeStudent(@Body() dto: { cedula: number; email?: string }) {
+    return this.authService.firstTimeStudent(dto);
+  }
 }
