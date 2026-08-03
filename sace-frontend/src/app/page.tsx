@@ -4921,19 +4921,12 @@ export default function Home() {
                     </div>
 
                     {(() => {
-                      const selectedSubject = actaSubjects.find(s => s.codasig === newActa.codasig);
-                      const isTrabajoDeGrado = selectedSubject && (
-                        /trabajo.*grado/i.test(selectedSubject.asignatura) ||
-                        /tesis.*doctoral/i.test(selectedSubject.asignatura) ||
-                        /trabajo.*especial/i.test(selectedSubject.asignatura)
-                      );
-                      
-                      if (!isTrabajoDeGrado) return null;
+                      if (!newActa.codasig) return null;
 
                       return (
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#a78bfa' }}>
-                            🎓 Jurados / Co-tutores de Trabajo de Grado
+                            🎓 Profesores Adicionales (Jurados / Co-tutores)
                           </div>
                           {additionalProfs.map((cedula, index) => (
                             <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
