@@ -20,6 +20,20 @@ interface UserProfile {
   perfil?: any;
 }
 
+function formatDate(dateInput: any): string {
+  if (!dateInput) return '';
+  try {
+    const dateStr = typeof dateInput === 'string' ? dateInput : new Date(dateInput).toISOString();
+    const parts = dateStr.substring(0, 10).split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  } catch (e) {
+    // fallback
+  }
+  return String(dateInput);
+}
+
 export default function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -3005,7 +3019,7 @@ export default function Home() {
                                     }}
                                   >
                                     <div style={{ fontSize: '16px', fontWeight: 700, color: '#a78bfa' }}>
-                                      {c.fecha_inicio ? `Inicio: ${new Date(c.fecha_inicio).toLocaleDateString('es-VE')}` : 'Sin fecha de inicio'}
+                                      {c.fecha_inicio ? `Inicio: ${formatDate(c.fecha_inicio)}` : 'Sin fecha de inicio'}
                                     </div>
                                     <div style={{ fontSize: '13px', marginTop: '6px', color: 'rgba(255,255,255,0.6)' }}>
                                       Programa: {c.codopest} | Período: {c.periodo_lectivo}
@@ -3056,7 +3070,7 @@ export default function Home() {
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                       <div style={{ fontSize: '15px', fontWeight: 700, color: '#a78bfa', minWidth: '150px' }}>
-                                        {c.fecha_inicio ? `Inicio: ${new Date(c.fecha_inicio).toLocaleDateString('es-VE')}` : 'Sin fecha de inicio'}
+                                        {c.fecha_inicio ? `Inicio: ${formatDate(c.fecha_inicio)}` : 'Sin fecha de inicio'}
                                       </div>
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
                                         Programa: <span style={{ fontWeight: 600, color: '#fff' }}>{c.codopest}</span>
@@ -4352,7 +4366,7 @@ export default function Home() {
                                   <strong>Cohorte:</strong> <span style={{ color: '#c084fc', fontWeight: 600 }}>{cohCode}</span>
                                 </div>
                                 <div>
-                                  <strong>Fecha de Inicio:</strong> {espec?.fecha_inicio ? new Date(espec.fecha_inicio).toLocaleDateString('es-VE') : 'No asignada'}
+                                  <strong>Fecha de Inicio:</strong> {espec?.fecha_inicio ? formatDate(espec.fecha_inicio) : 'No asignada'}
                                 </div>
                                 <div>
                                   <strong>Sede:</strong> {espec?.codsede || 'Principal'}
@@ -4504,7 +4518,7 @@ export default function Home() {
                             <option value="">Todas</option>
                             {filterCohortes.map(c => (
                               <option key={c.codcohorte} value={c.codcohorte}>
-                                {c.fecha_inicio ? new Date(c.fecha_inicio).toLocaleDateString('es-VE') : c.codcohorte}
+                                {c.fecha_inicio ? formatDate(c.fecha_inicio) : c.codcohorte}
                               </option>
                             ))}
                           </select>
@@ -4667,9 +4681,9 @@ export default function Home() {
                                       {a.asignatura_nombre}
                                     </h4>
                                     <div style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-                                      <div>📅 <span style={{ color: '#fff', fontWeight: 500 }}>{a.fecha_creacion ? new Date(a.fecha_creacion).toLocaleDateString('es-VE') : 'Sin fecha'}</span></div>
+                                      <div>📅 <span style={{ color: '#fff', fontWeight: 500 }}>{a.fecha_creacion ? formatDate(a.fecha_creacion) : 'Sin fecha'}</span></div>
                                       <div>🎓 Programa: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.programa_nombre}</span></div>
-                                      <div>👥 Cohorte: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.cohorte_fecha_inicio ? new Date(a.cohorte_fecha_inicio).toLocaleDateString('es-VE') : a.codcohorte}</span></div>
+                                      <div>👥 Cohorte: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.cohorte_fecha_inicio ? formatDate(a.cohorte_fecha_inicio) : a.codcohorte}</span></div>
                                       <div>👨‍🏫 Profesor: <span style={{ color: 'rgba(255,255,255,0.8)' }}>{a.profesor || 'No asignado'}</span></div>
                                     </div>
                                   </div>
@@ -4715,7 +4729,7 @@ export default function Home() {
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                       <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', minWidth: '150px' }}>
-                                        {a.fecha_creacion ? `Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-VE')}` : 'Sin fecha'}
+                                        {a.fecha_creacion ? `Fecha: ${formatDate(a.fecha_creacion)}` : 'Sin fecha'}
                                       </div>
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
                                         Asignatura: <span style={{ fontWeight: 600, color: '#a78bfa' }}>{a.asignatura_nombre} ({a.codasig})</span>
@@ -4726,7 +4740,7 @@ export default function Home() {
                                         Programa: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.programa_nombre}</span>
                                       </div>
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                                        Cohorte: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.cohorte_fecha_inicio ? new Date(a.cohorte_fecha_inicio).toLocaleDateString('es-VE') : a.codcohorte}</span>
+                                        Cohorte: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.cohorte_fecha_inicio ? formatDate(a.cohorte_fecha_inicio) : a.codcohorte}</span>
                                       </div>
                                       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
                                         Código Acta: <span style={{ color: 'rgba(255,255,255,0.9)' }}>{a.codacta}</span>
@@ -4843,7 +4857,7 @@ export default function Home() {
                           <option value="" disabled>Seleccione Cohorte...</option>
                           {actaCohortes.map(c => (
                             <option key={c.codcohorte} value={c.codcohorte}>
-                              {c.fecha_inicio ? new Date(c.fecha_inicio).toLocaleDateString('es-VE') : c.codcohorte} (Lectivo: {c.periodo_lectivo})
+                              {c.fecha_inicio ? formatDate(c.fecha_inicio) : c.codcohorte} (Lectivo: {c.periodo_lectivo})
                             </option>
                           ))}
                         </select>
@@ -6146,7 +6160,7 @@ export default function Home() {
                             />
                           ) : (
                             <div style={{ ...detailValueStyle, fontSize: '14.5px' }}>
-                              {selectedCohorte.fecha_inicio ? new Date(selectedCohorte.fecha_inicio).toLocaleDateString('es-VE') : 'No registrada'}
+                              {selectedCohorte.fecha_inicio ? formatDate(selectedCohorte.fecha_inicio) : 'No registrada'}
                             </div>
                           )}
                         </div>
