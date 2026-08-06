@@ -1979,7 +1979,7 @@ export default function Home() {
                   Acceso de estudiantes por primera vez
                 </button>
               </div>
-            )}
+            </div>
 
             {showFirstTimeModal && (
               <div style={{ ...modalBackdropStyle, zIndex: 2000 }}>
