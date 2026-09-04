@@ -1981,121 +1981,122 @@ export default function Home() {
               </div>
             </div>
 
-            {showFirstTimeModal && (
-              <div style={{ ...modalBackdropStyle, zIndex: 2000 }}>
-                <div style={{ ...modalContentStyle, width: '450px' }}>
-                  <h3 style={{ margin: '0 0 15px', fontSize: '18px', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    🔑 Acceso por Primera Vez
-                  </h3>
-                  
-                  <form onSubmit={handleFirstTimeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {firstTimeStep === 'CEDULA' && (
-                      <>
-                        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
-                          Ingresa tu Cédula de Identidad para verificar tu registro y generar tu contraseña provisional de acceso.
-                        </p>
-                        <div>
-                          <label style={labelStyle}>Cédula de Identidad</label>
-                          <input
-                            type="number"
-                            required
-                            placeholder="Ej: 20999888"
-                            value={firstTimeCedula}
-                            onChange={(e) => setFirstTimeCedula(e.target.value)}
-                            style={inputStyle}
-                          />
-                        </div>
-                      </>
-                    )}
+          </div>
 
-                    {firstTimeStep === 'EMAIL' && (
-                      <>
-                        <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)', fontSize: '13px', color: '#c084fc', lineHeight: '1.4' }}>
-                          💡 <strong>Estudiante encontrado:</strong> {firstTimeMessage}
-                        </div>
-                        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
-                          Por favor, proporciona un correo electrónico válido para enviarte tu contraseña provisional de acceso.
-                        </p>
-                        <div>
-                          <label style={labelStyle}>Correo Electrónico</label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="ejemplo@correo.com"
-                            value={firstTimeEmail}
-                            onChange={(e) => setFirstTimeEmail(e.target.value)}
-                            style={inputStyle}
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {firstTimeStep === 'SUCCESS' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center', padding: '10px 0' }}>
-                        <div style={{ fontSize: '40px' }}>✉️</div>
-                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#4ade80' }}>
-                          ¡Proceso Completado!
-                        </div>
-                        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                          {firstTimeMessage}
-                        </p>
-                        <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
-                          Recuerda revisar también tu bandeja de spam/correo no deseado.
-                        </p>
+          {showFirstTimeModal && (
+            <div style={{ ...modalBackdropStyle, zIndex: 2000 }}>
+              <div style={{ ...modalContentStyle, width: '450px' }}>
+                <h3 style={{ margin: '0 0 15px', fontSize: '18px', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🔑 Acceso por Primera Vez
+                </h3>
+                
+                <form onSubmit={handleFirstTimeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {firstTimeStep === 'CEDULA' && (
+                    <>
+                      <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
+                        Ingresa tu Cédula de Identidad para verificar tu registro y generar tu contraseña provisional de acceso.
+                      </p>
+                      <div>
+                        <label style={labelStyle}>Cédula de Identidad</label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="Ej: 20999888"
+                          value={firstTimeCedula}
+                          onChange={(e) => setFirstTimeCedula(e.target.value)}
+                          style={inputStyle}
+                        />
                       </div>
-                    )}
+                    </>
+                  )}
 
-                    {firstTimeStep === 'ERROR' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center', padding: '10px 0' }}>
-                        <div style={{ fontSize: '40px' }}>⚠️</div>
-                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#f87171' }}>
-                          No se pudo completar el acceso
-                        </div>
-                        <p style={{ margin: 0, fontSize: '13px', color: '#f87171', fontWeight: 500, lineHeight: '1.5' }}>
-                          {firstTimeMessage}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFirstTimeStep('CEDULA');
-                            setFirstTimeMessage('');
-                          }}
-                          style={{
-                            ...btnStyleSecondary,
-                            marginTop: '10px',
-                            fontSize: '12.5px',
-                            padding: '6px 16px'
-                          }}
-                        >
-                          Intentar de nuevo
-                        </button>
+                  {firstTimeStep === 'EMAIL' && (
+                    <>
+                      <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)', fontSize: '13px', color: '#c084fc', lineHeight: '1.4' }}>
+                        💡 <strong>Estudiante encontrado:</strong> {firstTimeMessage}
                       </div>
-                    )}
+                      <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
+                        Por favor, proporciona un correo electrónico válido para enviarte tu contraseña provisional de acceso.
+                      </p>
+                      <div>
+                        <label style={labelStyle}>Correo Electrónico</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="ejemplo@correo.com"
+                          value={firstTimeEmail}
+                          onChange={(e) => setFirstTimeEmail(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </>
+                  )}
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '15px' }}>
+                  {firstTimeStep === 'SUCCESS' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center', padding: '10px 0' }}>
+                      <div style={{ fontSize: '40px' }}>✉️</div>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#4ade80' }}>
+                        ¡Proceso Completado!
+                      </div>
+                      <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                        {firstTimeMessage}
+                      </p>
+                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                        Recuerda revisar también tu bandeja de spam/correo no deseado.
+                      </p>
+                    </div>
+                  )}
+
+                  {firstTimeStep === 'ERROR' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center', padding: '10px 0' }}>
+                      <div style={{ fontSize: '40px' }}>⚠️</div>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#f87171' }}>
+                        No se pudo completar el acceso
+                      </div>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#f87171', fontWeight: 500, lineHeight: '1.5' }}>
+                        {firstTimeMessage}
+                      </p>
                       <button
                         type="button"
-                        onClick={handleCloseFirstTimeModal}
-                        style={btnStyleSecondary}
+                        onClick={() => {
+                          setFirstTimeStep('CEDULA');
+                          setFirstTimeMessage('');
+                        }}
+                        style={{
+                          ...btnStyleSecondary,
+                          marginTop: '10px',
+                          fontSize: '12.5px',
+                          padding: '6px 16px'
+                        }}
                       >
-                        {firstTimeStep === 'SUCCESS' ? 'Cerrar' : 'Cancelar'}
+                        Intentar de nuevo
                       </button>
-                      
-                      {(firstTimeStep === 'CEDULA' || firstTimeStep === 'EMAIL') && (
-                        <button
-                          type="submit"
-                          disabled={firstTimeLoading}
-                          style={btnStylePrimary}
-                        >
-                          {firstTimeLoading ? 'Procesando...' : firstTimeStep === 'CEDULA' ? 'Verificar' : 'Enviar Contraseña'}
-                        </button>
-                      )}
                     </div>
-                  </form>
-                </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '15px' }}>
+                    <button
+                      type="button"
+                      onClick={handleCloseFirstTimeModal}
+                      style={btnStyleSecondary}
+                    >
+                      {firstTimeStep === 'SUCCESS' ? 'Cerrar' : 'Cancelar'}
+                    </button>
+                    
+                    {(firstTimeStep === 'CEDULA' || firstTimeStep === 'EMAIL') && (
+                      <button
+                        type="submit"
+                        disabled={firstTimeLoading}
+                        style={btnStylePrimary}
+                      >
+                        {firstTimeLoading ? 'Procesando...' : firstTimeStep === 'CEDULA' ? 'Verificar' : 'Enviar Contraseña'}
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
         // 2. DASHBOARD VIEW (AUTHENTICATED)
