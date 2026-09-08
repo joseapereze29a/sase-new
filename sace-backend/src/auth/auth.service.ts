@@ -262,7 +262,7 @@ export class AuthService {
       });
 
       const mailOptions = {
-        from: process.env.SMTP_FROM || '"SACE CIPPSV" <no.reply@cippsv.com.ve>',
+        from: process.env.SMTP_FROM || '"SACE CIPPSV" <no.reply@cippsvonline.com>',
         to: emailToUse,
         subject: 'Acceso al SACE - Contraseña Provisional',
         html: `

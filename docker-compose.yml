@@ -48,9 +48,9 @@ services:
       SMTP_HOST: ${SMTP_HOST:-mail.cippsvonline.com}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-no.reply@cippsv.com}
+      SMTP_USER: ${SMTP_USER:-no.reply@cippsvonline.com}
       SMTP_PASS: ${SMTP_PASS:-czGmT7iGWrffNS4}
-      SMTP_FROM: ${SMTP_FROM:-no.reply@cippsv.com.ve}
+      SMTP_FROM: ${SMTP_FROM:-no.reply@cippsvonline.com}
     depends_on:
       - sace-db
     networks:
