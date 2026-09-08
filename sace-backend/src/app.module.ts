@@ -10,8 +10,11 @@ import { ProfesoresModule } from './profesores/profesores.module';
 import { EvaluacionesModule } from './evaluaciones/evaluaciones.module';
 import { SedesModule } from './sedes/sedes.module';
 
+import { ConfigModule } from '@nestjs/config';
+
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     DatosPersonalesModule,
     AcademicoModule,

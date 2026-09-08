@@ -248,13 +248,15 @@ export class AuthService {
     try {
       const port = Number(process.env.SMTP_PORT) || 465;
       const isSecure = process.env.SMTP_SECURE === 'true' || port === 465;
+      const smtpUser = process.env.SMTP_USER || 'no.reply@cippsvonline.com';
+      const smtpPass = process.env.SMTP_PASS || 'czGmT7iGWrffNS4';
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'mail.cippsvonline.com',
         port: port,
         secure: isSecure,
         auth: {
-          user: process.env.SMTP_USER || '',
-          pass: process.env.SMTP_PASS || '',
+          user: smtpUser,
+          pass: smtpPass,
         },
         tls: {
           rejectUnauthorized: false,
@@ -285,14 +287,8 @@ export class AuthService {
         `,
       };
 
-      if (process.env.SMTP_USER) {
-        await transporter.sendMail(mailOptions);
-        emailSent = true;
-      } else {
-        const logContent = `[${new Date().toISOString()}] EMAIL TO: ${emailToUse}\nSUBJECT: Acceso al SACE - Contraseña Provisional\nBODY: Temp Password: ${tempPassword}\n\n`;
-        fs.appendFileSync(path.join(__dirname, '..', '..', 'mail_debug.log'), logContent);
-        emailSent = true;
-      }
+      await transporter.sendMail(mailOptions);
+      emailSent = true;
     } catch (err: any) {
       errorMsg = err.message;
       const logContent = `[${new Date().toISOString()}] ERROR SENDING TO: ${emailToUse} (${err.message}). Temp Password: ${tempPassword}\n\n`;
