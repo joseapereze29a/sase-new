@@ -246,18 +246,23 @@ export class AuthService {
     let emailSent = false;
     let errorMsg = '';
     try {
+      const port = Number(process.env.SMTP_PORT) || 465;
+      const isSecure = process.env.SMTP_SECURE === 'true' || port === 465;
       const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === 'true',
+        host: process.env.SMTP_HOST || 'mail.cippsvonline.com',
+        port: port,
+        secure: isSecure,
         auth: {
           user: process.env.SMTP_USER || '',
           pass: process.env.SMTP_PASS || '',
         },
+        tls: {
+          rejectUnauthorized: false,
+        },
       });
 
       const mailOptions = {
-        from: process.env.SMTP_FROM || '"SACE CIPPSV" <no-reply@cippsv.com.ve>',
+        from: process.env.SMTP_FROM || '"SACE CIPPSV" <no.reply@cippsv.com.ve>',
         to: emailToUse,
         subject: 'Acceso al SACE - Contraseña Provisional',
         html: `
