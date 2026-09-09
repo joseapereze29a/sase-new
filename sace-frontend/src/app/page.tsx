@@ -351,15 +351,46 @@ export default function Home() {
 
   function formatProgramLabel(p: any): string {
     if (!p) return '';
-    const tipo = p.tipo || '';
-    let mencion = (p.mencion_especialidad || p.titulo_a_otorgar || '').trim();
+    const tipo = (p.tipo || p.tipo_programa || '').trim();
+    let mencion = (p.mencion_especialidad || '').trim();
+    let titulo = (p.titulo_a_otorgar || '').trim();
+
+    const cleanStr = (str: string) => str
+      .replace(/&oacute;/g, 'ó').replace(/&Oacute;/g, 'Ó')
+      .replace(/&iacute;/g, 'í').replace(/&Iacute;/g, 'Í')
+      .replace(/&eacute;/g, 'é').replace(/&Eacute;/g, 'É')
+      .replace(/&aacute;/g, 'á').replace(/&Aacute;/g, 'Á')
+      .replace(/&uacute;/g, 'ú').replace(/&Uacute;/g, 'Ú')
+      .replace(/&ntilde;/g, 'ñ').replace(/&Ntilde;/g, 'Ñ');
+
+    mencion = cleanStr(mencion);
+    titulo = cleanStr(titulo);
+
     if (tipo && mencion) {
-      if (mencion.toLowerCase().startsWith('en ')) {
+      const mLower = mencion.toLowerCase();
+      const tLower = tipo.toLowerCase();
+      if (mLower.startsWith(`${tLower} en `) || mLower.startsWith(`${tLower} `)) {
+        return mencion;
+      }
+      if (mLower.startsWith('en ') || mLower.startsWith('de ')) {
         return `${tipo} ${mencion}`;
       }
       return `${tipo} en ${mencion}`;
     }
-    return mencion || tipo || '';
+
+    if (tipo && titulo) {
+      const titLower = titulo.toLowerCase();
+      const tLower = tipo.toLowerCase();
+      if (titLower.startsWith(`${tLower} en `) || titLower.startsWith(`${tLower} `)) {
+        return titulo;
+      }
+      if (titLower.startsWith('en ') || titLower.startsWith('de ')) {
+        return `${tipo} ${titulo}`;
+      }
+      return `${tipo} en ${titulo}`;
+    }
+
+    return cleanStr(mencion || titulo || tipo || '');
   }
 
   function suggestProgramCode(codsede: string, tipo: string, mencion: string, titulo: string) {
@@ -2950,7 +2981,7 @@ export default function Home() {
                               🎓
                             </div>
                             <div>
-                              <div style={{ fontWeight: 700, fontSize: '15.5px', color: '#fff', lineHeight: 1.3 }}>{p.titulo_a_otorgar}</div>
+                              <div style={{ fontWeight: 700, fontSize: '15.5px', color: '#fff', lineHeight: 1.3 }}>{formatProgramLabel(p)}</div>
                               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '6px' }}>
                                 Mención/Especialidad: {p.mencion_especialidad || 'No registrada'}
                               </div>
@@ -5828,9 +5859,9 @@ export default function Home() {
                     {/* Left Column: Metadata */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                       <div>
-                        <span style={detailLabelStyle}>Título a Otorgar</span>
+                        <span style={detailLabelStyle}>Nombre del Programa</span>
                         <div style={{ ...detailValueStyle, fontSize: '15px', lineHeight: '1.4' }}>
-                          {selectedProgram.titulo_a_otorgar || 'No registrado'}
+                          {formatProgramLabel(selectedProgram) || 'No registrado'}
                         </div>
                       </div>
 
@@ -6379,9 +6410,9 @@ export default function Home() {
                       </h4>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                         <div>
-                          <span style={detailLabelStyle}>Título a Otorgar</span>
+                          <span style={detailLabelStyle}>Programa de Estudio</span>
                           <div style={{ ...detailValueStyle, fontSize: '14.5px' }}>
-                            {selectedProgramFilter.titulo_a_otorgar || 'No registrado'}
+                            {formatProgramLabel(selectedProgramFilter) || 'No registrado'}
                           </div>
                         </div>
                         <div>
@@ -6868,7 +6899,7 @@ export default function Home() {
                           .map(([prog, count]) => {
                             const pct = ((count / total) * 100).toFixed(1);
                             const progDetail = programs.find((p) => p.codopest === prog);
-                            const label = progDetail ? progDetail.titulo_a_otorgar || progDetail.mencion_especialidad : prog;
+                            const label = progDetail ? formatProgramLabel(progDetail) : prog;
                             return (
                               <div key={prog}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
