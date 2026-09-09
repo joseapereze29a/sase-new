@@ -349,6 +349,19 @@ export default function Home() {
     return words.map(w => w.substring(0, 2).toUpperCase()).join('');
   }
 
+  function formatProgramLabel(p: any): string {
+    if (!p) return '';
+    const tipo = p.tipo || '';
+    let mencion = (p.mencion_especialidad || p.titulo_a_otorgar || '').trim();
+    if (tipo && mencion) {
+      if (mencion.toLowerCase().startsWith('en ')) {
+        return `${tipo} ${mencion}`;
+      }
+      return `${tipo} en ${mencion}`;
+    }
+    return mencion || tipo || '';
+  }
+
   function suggestProgramCode(codsede: string, tipo: string, mencion: string, titulo: string) {
     if (!codsede) return '';
     const prefix = tipo === 'Doctorado' ? 'DR' : 
@@ -3065,7 +3078,7 @@ export default function Home() {
                       <option value="">Seleccione un programa</option>
                       {programsListByCity.map(p => (
                         <option key={`${p.codsede}-${p.codopest}`} value={JSON.stringify(p)}>
-                          {p.titulo_a_otorgar} ({p.codopest})
+                          {formatProgramLabel(p)} ({p.codopest})
                         </option>
                       ))}
                     </select>
@@ -3376,7 +3389,7 @@ export default function Home() {
                               <option value="" disabled>Seleccione Programa...</option>
                               {modalPrograms.map(prog => (
                                 <option key={prog.codopest} value={prog.codopest}>
-                                  {prog.codopest} - {prog.mencion_especialidad} ({prog.tipo})
+                                  {formatProgramLabel(prog)} ({prog.codopest})
                                 </option>
                               ))}
                             </select>
@@ -4688,7 +4701,7 @@ export default function Home() {
                             <option value="">Todos</option>
                             {filterPrograms.map(prog => (
                               <option key={prog.codopest} value={prog.codopest}>
-                                {prog.mencion_especialidad || prog.titulo_a_otorgar} ({prog.tipo})
+                                {formatProgramLabel(prog)} ({prog.codopest})
                               </option>
                             ))}
                           </select>
@@ -5027,7 +5040,7 @@ export default function Home() {
                           <option value="" disabled>Seleccione Programa...</option>
                           {actaPrograms.map(prog => (
                             <option key={prog.codopest} value={prog.codopest}>
-                              {prog.mencion_especialidad || prog.titulo_a_otorgar} ({prog.tipo})
+                              {formatProgramLabel(prog)} ({prog.codopest})
                             </option>
                           ))}
                         </select>
