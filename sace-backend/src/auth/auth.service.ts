@@ -32,8 +32,16 @@ export class AuthService {
   }
 
   async validateUser(username: string, pass: string) {
+    const cleanUser = String(username || '').trim();
+    const cleanPass = String(pass || '').trim();
+
     const user = await this.prisma.usuariosSace.findFirst({
-      where: { user: username },
+      where: {
+        OR: [
+          { user: cleanUser },
+          { cedula: Number(cleanUser) || undefined }
+        ]
+      },
       include: { datosPersonales: true },
     });
     if (!user || !user.pass) return null;
@@ -42,9 +50,9 @@ export class AuthService {
     let needsUpgrade = false;
 
     if (user.pass.startsWith('$2')) {
-      isMatch = await bcrypt.compare(pass, user.pass);
+      isMatch = await bcrypt.compare(cleanPass, user.pass);
     } else {
-      isMatch = pass === user.pass;
+      isMatch = cleanPass === user.pass;
       needsUpgrade = isMatch;
     }
 
