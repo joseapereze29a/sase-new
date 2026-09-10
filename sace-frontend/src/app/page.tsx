@@ -2638,7 +2638,7 @@ export default function Home() {
                                       cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s', marginTop: '4px'
                                     }}
                                   >
-                                    📄 Imprimir Récord
+                                    📄 Imprimir PDF
                                   </button>
                                 </div>
                               </div>
@@ -4542,10 +4542,18 @@ export default function Home() {
                       </h3>
                       {studentProfileData && (
                         <button
-                          onClick={() => window.print()}
-                          style={{ ...btnStyleSecondary, display: 'flex', alignItems: 'center', gap: '8px' }}
+                          onClick={() => {
+                            const firstEsp = studentProfileData?.especializaciones?.[0];
+                            const firstCoh = firstEsp?.codcohorte || studentProfileData.notas?.[0]?.codcohorte;
+                            const ced = studentProfileData?.cedula || Number(profile.username);
+                            if (firstCoh) {
+                              setRecordModalTarget({ cedula: ced, codcohorte: firstCoh, programName: firstEsp?.programa || 'Récord de Calificaciones' });
+                              setShowRecordModal(true);
+                            }
+                          }}
+                          style={{ ...btnStylePrimary, display: 'flex', alignItems: 'center', gap: '8px' }}
                         >
-                          🖨️ Imprimir Reporte
+                          📄 Imprimir PDF
                         </button>
                       )}
                     </div>
@@ -4585,20 +4593,37 @@ export default function Home() {
                           <div key={cohCode} style={{ ...panelCardStyle, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {/* Header metadata */}
                             <div style={{
-                              display: 'flex', flexDirection: 'column', gap: '8px', 
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px',
                               borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px'
                             }}>
-                              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#818cf8', fontWeight: 600 }}>
-                                {espec?.tipo || 'Postgrado'}
-                              </span>
-                              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-                                {espec?.programa || 'Programa Académico No Especificado'}
-                              </h4>
-                              {espec?.mencion && espec.mencion !== 'No registrada' && (
-                                <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
-                                  Mención: {espec.mencion}
+                              <div>
+                                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#818cf8', fontWeight: 600 }}>
+                                  {espec?.tipo || 'Postgrado'}
                                 </span>
-                              )}
+                                <h4 style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 700, color: '#fff' }}>
+                                  {espec?.programa || 'Programa Académico No Especificado'}
+                                </h4>
+                                {espec?.mencion && espec.mencion !== 'No registrada' && (
+                                  <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
+                                    Mención: {espec.mencion}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const ced = studentProfileData?.cedula || Number(profile.username);
+                                  setRecordModalTarget({ cedula: ced, codcohorte: cohCode, programName: espec?.programa || cohCode });
+                                  setShowRecordModal(true);
+                                }}
+                                style={{
+                                  background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
+                                  borderRadius: '10px', color: '#c084fc', fontSize: '12px', padding: '6px 14px',
+                                  cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'
+                                }}
+                              >
+                                📄 Imprimir PDF
+                              </button>
+                            </div>
                               
                               <div style={{
                                 display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
@@ -4624,7 +4649,6 @@ export default function Home() {
                                   </span>
                                 </div>
                               </div>
-                            </div>
 
                             {/* Table of grades */}
                             <div style={{ overflowX: 'auto' }}>
