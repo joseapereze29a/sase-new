@@ -158,6 +158,8 @@ export default function Home() {
   const [actaPrograms, setActaPrograms] = useState<any[]>([]);
   const [actaSelectedProgramCode, setActaSelectedProgramCode] = useState('');
   const [actaCohortes, setActaCohortes] = useState<any[]>([]);
+  const [showRecordModal, setShowRecordModal] = useState(false);
+  const [recordModalTarget, setRecordModalTarget] = useState<{ cedula: number; codcohorte: string; programName: string } | null>(null);
   const [actaSubjects, setActaSubjects] = useState<any[]>([]);
   const [suggestedTeacherName, setSuggestedTeacherName] = useState('');
 
@@ -1081,11 +1083,11 @@ export default function Home() {
     }
   }
 
-  async function handleDownloadRecordPdf(cedula: number, codcohorte: string, programName: string) {
+  async function handleDownloadRecordPdf(cedula: number, codcohorte: string, programName: string, certificadas: boolean = false) {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch(`${apiUrl}/datos-personales/${cedula}/record-notas/pdf?codcohorte=${codcohorte}`, {
+      const res = await fetch(`${apiUrl}/datos-personales/${cedula}/record-notas/pdf?codcohorte=${encodeURIComponent(codcohorte)}&certificadas=${certificadas}`, {
         headers: getHeaders()
       });
       if (!res.ok) {
@@ -1096,12 +1098,14 @@ export default function Home() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `record_${cedula}_${codcohorte}.pdf`;
+      const prefix = certificadas ? 'record_certificadas' : 'record_simples';
+      a.download = `${prefix}_${cedula}_${codcohorte}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      setMessage({ type: 'success', text: `Récord de calificaciones de "${programName}" descargado correctamente.` });
+      setMessage({ type: 'success', text: `Récord de calificaciones (${certificadas ? 'Notas Certificadas' : 'Notas Simples'}) de "${programName}" descargado correctamente.` });
+      setShowRecordModal(false);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
     } finally {
@@ -2624,14 +2628,17 @@ export default function Home() {
                                     Cohorte: {esp.codcohorte}
                                   </div>
                                   <button
-                                    onClick={() => handleDownloadRecordPdf(singleStudent.cedula, esp.codcohorte, esp.programa)}
+                                    onClick={() => {
+                                      setRecordModalTarget({ cedula: singleStudent.cedula, codcohorte: esp.codcohorte, programName: esp.programa });
+                                      setShowRecordModal(true);
+                                    }}
                                     style={{
                                       background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
                                       borderRadius: '8px', color: '#c084fc', fontSize: '11px', padding: '5px 10px',
                                       cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s', marginTop: '4px'
                                     }}
                                   >
-                                    📄 Imprimir PDF
+                                    📄 Imprimir Récord
                                   </button>
                                 </div>
                               </div>
@@ -8011,6 +8018,125 @@ export default function Home() {
                           <button type="submit" style={btnStylePrimary}>{loading ? 'Guardando...' : 'Guardar Cambios'}</button>
                         </div>
                       </form>
+                    </div>
+                  </div>
+                )}
+
+                {showRecordModal && recordModalTarget && (
+                  <div style={modalBackdropStyle}>
+                    <div style={{ ...modalContentStyle, maxWidth: '520px', padding: '30px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '19px', color: '#fff', fontWeight: 700 }}>
+                            📜 Impresión de Récord de Notas
+                          </h3>
+                          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>
+                            Seleccione el formato oficial a descargar
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setShowRecordModal(false)}
+                          style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '20px 0' }}>
+                        {/* Opción 1: Notas Simples */}
+                        <div
+                          onClick={() => handleDownloadRecordPdf(recordModalTarget.cedula, recordModalTarget.codcohorte, recordModalTarget.programName, false)}
+                          style={{
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '14px',
+                            padding: '16px 18px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#60a5fa';
+                            e.currentTarget.style.background = 'rgba(96,165,250,0.08)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                          }}
+                        >
+                          <div style={{
+                            fontSize: '24px',
+                            background: 'rgba(96,165,250,0.15)',
+                            width: '48px', height: '48px',
+                            borderRadius: '12px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                          }}>
+                            📄
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '15px', fontWeight: 700, color: '#60a5fa' }}>
+                              Notas Simples
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '3px', lineHeight: 1.35 }}>
+                              Imprime el récord estándar con la tabla de calificaciones registradas e índice académico.
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Opción 2: Notas Certificadas */}
+                        <div
+                          onClick={() => handleDownloadRecordPdf(recordModalTarget.cedula, recordModalTarget.codcohorte, recordModalTarget.programName, true)}
+                          style={{
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '14px',
+                            padding: '16px 18px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#c084fc';
+                            e.currentTarget.style.background = 'rgba(192,132,252,0.08)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                          }}
+                        >
+                          <div style={{
+                            fontSize: '24px',
+                            background: 'rgba(192,132,252,0.15)',
+                            width: '48px', height: '48px',
+                            borderRadius: '12px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                          }}>
+                            🎖️
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '15px', fontWeight: 700, color: '#c084fc' }}>
+                              Notas Certificadas
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '3px', lineHeight: 1.35 }}>
+                              Incluye la portada de Certificación de Notas firmada por el Secretario y Director Institucional.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowRecordModal(false)}
+                          style={btnStyleSecondary}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

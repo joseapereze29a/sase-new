@@ -4,6 +4,7 @@ import { CreateDatosPersonalesDto } from './dto/create-datos-personales.dto';
 import { UpdateDatosPersonalesDto } from './dto/update-datos-personales.dto';
 import PDFDocument from 'pdfkit';
 import { Role } from '../auth/enums/role.enum';
+import * as fs from 'fs';
 
 @Injectable()
 export class DatosPersonalesService {
@@ -321,7 +322,7 @@ export class DatosPersonalesService {
     });
   }
 
-  async generateRecordNotasPdf(cedula: number, codcohorte: string): Promise<Buffer> {
+  async generateRecordNotasPdf(cedula: number, codcohorte: string, certificadas: boolean = false): Promise<Buffer> {
     const student = await this.findOne(cedula);
     
     // Buscar la especialización (programa)
@@ -474,9 +475,77 @@ export class DatosPersonalesService {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', (err) => reject(err));
 
-      // --- RENDERIZADO DEL PDF ---
+      const studentNombres = (student.nombres || '').toUpperCase();
+      const studentApellidos = (student.apellidos || '').toUpperCase();
+      const nacLetter = student.nacionalidad === 'Venezolana' ? 'V' : 'E';
+      const formattedCedula = student.cedula.toLocaleString('es-VE').replace(/\./g, '.');
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      const today = new Date();
+      const dateStringFull = `${ciudad}, ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}`;
+
+      if (certificadas) {
+        // --- PORTADA DE NOTAS CERTIFICADAS (PÁGINA 1) ---
+        if (fs.existsSync('logo.png')) {
+          doc.image('logo.png', 247, 45, { width: 100 });
+        }
+
+        doc.font('Helvetica-Bold').fillColor('#002855').fontSize(11);
+        doc.text('CENTRO DE INVESTIGACIONES PSIQUIÁTRICAS, PSICOLÓGICAS Y', 50, 155, { align: 'center', width: 495 });
+        doc.text('SEXOLÓGICAS DE VENEZUELA', 50, 170, { align: 'center', width: 495 });
+        doc.font('Helvetica').fontSize(9.5).fillColor('#333333');
+        doc.text('Instituto de Investigación y Postgrado', 50, 186, { align: 'center', width: 495 });
+
+        doc.font('Helvetica-Bold').fontSize(16).fillColor('#002855');
+        doc.text('NOTAS CERTIFICADAS', 50, 220, { align: 'center', width: 495 });
+        
+        doc.strokeColor('#002855').lineWidth(1.5);
+        doc.moveTo(180, 242).lineTo(415, 242).stroke();
+
+        const textP1 = `El suscrito SECRETARIO del CENTRO DE INVESTIGACIONES PSIQUIÁTRICAS, PSICOLÓGICAS Y SEXOLÓGICAS DE VENEZUELA, certifica que en el archivo de esta institución, aparece inscrito(a) el (la) ciudadano(a) ${studentNombres} ${studentApellidos}, titular de la cédula de identidad No ${nacLetter} - ${formattedCedula}, y en cuyo registro académico consta que obtuvo las calificaciones contenidas en el presente documento.`;
+
+        doc.font('Helvetica').fontSize(10.5).fillColor('#000000');
+        doc.text(textP1, 65, 270, { align: 'justify', width: 465, lineGap: 6 });
+
+        const textScale = `Se hace constar que el sistema de calificaciones vigente para esta fecha es de uno a veinte (01 a 20) puntos. La nota mínima aprobatoria es de quince (15) puntos.`;
+        doc.text(textScale, 65, 360, { align: 'justify', width: 465, lineGap: 5 });
+
+        const dateExpedicion = `Se expide la presente CERTIFICACIÓN a solicitud de parte interesada en la ciudad de ${ciudad}, el ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}.`;
+        doc.text(dateExpedicion, 65, 420, { align: 'justify', width: 465, lineGap: 5 });
+
+        doc.strokeColor('#000000').lineWidth(0.75);
+        doc.moveTo(180, 500).lineTo(415, 500).stroke();
+
+        const certFirma = `Certifico que la firma anterior corresponde efectivamente al Esp. HERMAN YURI BANDEZ SUÁREZ, quien es para la época de la firma el Secretario de esta Institución.`;
+        doc.font('Helvetica-Oblique').fontSize(9.5).fillColor('#333333');
+        doc.text(certFirma, 65, 510, { align: 'center', width: 465, lineGap: 4 });
+
+        doc.font('Helvetica').fontSize(10).fillColor('#000000');
+        doc.text(dateStringFull, 65, 560, { align: 'center', width: 465 });
+
+        doc.strokeColor('#000000').lineWidth(0.75);
+        doc.moveTo(65, 660).lineTo(235, 660).stroke();
+        doc.moveTo(295, 660).lineTo(465, 660).stroke();
+
+        doc.font('Helvetica-Bold').fontSize(9.5);
+        doc.text('Dr. Eduardo Bianco Colmenares', 65, 665, { align: 'center', width: 170 });
+        doc.font('Helvetica').fontSize(9);
+        doc.text('Director', 65, 678, { align: 'center', width: 170 });
+
+        doc.font('Helvetica-Oblique').fontSize(8.5).fillColor('#555555');
+        doc.text('Preparado por:', 295, 648, { align: 'center', width: 170 });
+        doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000');
+        doc.text('Lic. Mercedes Labrador', 295, 665, { align: 'center', width: 170 });
+        doc.font('Helvetica').fontSize(9);
+        doc.text('Jefe Control de Estudios', 295, 678, { align: 'center', width: 170 });
+
+        doc.addPage();
+      }
+
+      // --- RENDERIZADO DEL REGISTRO DE NOTAS ---
       // Logo
-      doc.image('logo.png', 50, 30, { width: 50 });
+      if (fs.existsSync('logo.png')) {
+        doc.image('logo.png', 50, 30, { width: 50 });
+      }
 
       // Encabezado
       doc.font('Helvetica-Bold').fillColor('#000000').fontSize(9.5);
@@ -495,10 +564,8 @@ export class DatosPersonalesService {
       // Datos personales (2 columnas para ahorrar espacio)
       const yMeta = yHeaderEnd + 16;
       doc.font('Helvetica-Bold').fontSize(8.5);
-      doc.text('Nombres y Apellidos: ', 50, yMeta, { lineBreak: false } as any).font('Helvetica').text(`${student.nombres} ${student.apellidos}`);
+      doc.text('Nombres y Apellidos: ', 50, yMeta, { lineBreak: false } as any).font('Helvetica').text(`${student.nombres || ''} ${student.apellidos || ''}`);
       
-      const nacLetter = student.nacionalidad === 'Venezolana' ? 'V' : 'E';
-      const formattedCedula = student.cedula.toLocaleString('es-VE').replace(/\./g, '.');
       doc.font('Helvetica-Bold').text('Cédula: ', 50, yMeta + 11, { lineBreak: false } as any).font('Helvetica').text(`${nacLetter} - ${formattedCedula}`);
       
       doc.font('Helvetica-Bold').text('Sede: ', 350, yMeta, { lineBreak: false } as any).font('Helvetica').text(ciudad);
@@ -581,11 +648,7 @@ export class DatosPersonalesService {
       // Fecha y Promedio
       doc.font('Helvetica').fontSize(9).fillColor('#000000');
       
-      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-      const today = new Date();
-      const dateString = `${ciudad}, ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}`;
-      
-      doc.text(dateString, 50, currentY);
+      doc.text(dateStringFull, 50, currentY);
       doc.font('Helvetica-Bold').text(`Índice Académico: ${promedio}`, 350, currentY, { align: 'right', width: 200 });
 
       currentY += 35;

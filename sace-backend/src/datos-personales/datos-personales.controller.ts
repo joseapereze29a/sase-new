@@ -61,6 +61,8 @@ export class DatosPersonalesController {
   async generateRecordPdf(
     @Param('cedula', ParseIntPipe) cedula: number,
     @Query('codcohorte') codcohorte: string,
+    @Query('certificadas') certificadas: string,
+    @Query('tipo') tipo: string,
     @Request() req: any,
     @Res() res: express.Response,
   ) {
@@ -77,11 +79,13 @@ export class DatosPersonalesController {
       throw new ForbiddenException('No tienes permiso para consultar este expediente.');
     }
 
-    const buffer = await this.service.generateRecordNotasPdf(cedula, codcohorte);
+    const isCertificadas = certificadas === 'true' || certificadas === '1' || tipo === 'certificadas';
+    const buffer = await this.service.generateRecordNotasPdf(cedula, codcohorte, isCertificadas);
     
+    const filePrefix = isCertificadas ? 'record_certificadas' : 'record';
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=record_${cedula}_${codcohorte}.pdf`,
+      'Content-Disposition': `attachment; filename=${filePrefix}_${cedula}_${codcohorte}.pdf`,
       'Content-Length': buffer.length,
     });
     
