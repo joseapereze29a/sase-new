@@ -39,24 +39,6 @@ export class DatosPersonalesController {
     return this.service.findAll({ skip, take, search }, req?.user);
   }
 
-  @Get(':cedula')
-  async findOne(@Param('cedula', ParseIntPipe) cedula: number, @Request() req: any) {
-    const { user } = req;
-    const isOwner = user.username === String(cedula);
-    const hasPrivileges = [Role.SUPER_USUARIO, Role.ADMINISTRADOR, Role.COORDINADOR].includes(user.role);
-
-    let hasAccess = isOwner || hasPrivileges;
-    if (!hasAccess && user.role === Role.PROFESOR) {
-      hasAccess = await this.service.isStudentInTeacherPrograms(cedula, Number(user.username));
-    }
-
-    if (!hasAccess) {
-      throw new ForbiddenException('No tienes permiso para consultar este expediente.');
-    }
-
-    return this.service.findOne(cedula);
-  }
-
   @Get(':cedula/record-notas/pdf')
   async generateRecordPdf(
     @Param('cedula', ParseIntPipe) cedula: number,
@@ -90,6 +72,24 @@ export class DatosPersonalesController {
     });
     
     res.end(buffer);
+  }
+
+  @Get(':cedula')
+  async findOne(@Param('cedula', ParseIntPipe) cedula: number, @Request() req: any) {
+    const { user } = req;
+    const isOwner = user.username === String(cedula);
+    const hasPrivileges = [Role.SUPER_USUARIO, Role.ADMINISTRADOR, Role.COORDINADOR].includes(user.role);
+
+    let hasAccess = isOwner || hasPrivileges;
+    if (!hasAccess && user.role === Role.PROFESOR) {
+      hasAccess = await this.service.isStudentInTeacherPrograms(cedula, Number(user.username));
+    }
+
+    if (!hasAccess) {
+      throw new ForbiddenException('No tienes permiso para consultar este expediente.');
+    }
+
+    return this.service.findOne(cedula);
   }
 
   @UseGuards(RolesGuard)

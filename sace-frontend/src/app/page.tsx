@@ -8050,7 +8050,7 @@ export default function Home() {
             )}
 
             {showRecordModal && recordModalTarget && (
-              <div style={modalBackdropStyle}>
+              <div style={{ ...modalBackdropStyle, zIndex: 9999 }}>
                 <div style={{ ...modalContentStyle, maxWidth: '520px', padding: '30px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <div>

@@ -327,9 +327,9 @@ export class DatosPersonalesService {
     
     // Buscar la especialización (programa)
     const normalize = (code: string) => (code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    const esp = student.especializaciones.find(e => normalize(e.codcohorte) === normalize(codcohorte));
+    const esp = student.especializaciones.find(e => normalize(e.codcohorte) === normalize(codcohorte)) || student.especializaciones[0];
     if (!esp) {
-      throw new NotFoundException(`El estudiante no tiene registrado el programa con cohorte ${codcohorte}`);
+      throw new NotFoundException(`El estudiante no tiene ningún programa registrado.`);
     }
 
     // Filtrar notas de este programa
