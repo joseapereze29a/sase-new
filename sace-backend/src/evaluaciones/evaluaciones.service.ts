@@ -29,7 +29,31 @@ export class EvaluacionesService {
     const where: any = {};
 
     if (user.role === Role.PROFESOR) {
-      where.cedula_profesor = Number(user.username);
+      const profCedula = Number(user.username);
+      if (!isNaN(profCedula)) {
+        const multiActasList = await this.prisma.multiactas.findMany({
+          where: {
+            OR: [
+              { cedula_profesor1: profCedula },
+              { cedula_profesor2: profCedula },
+              { cedula_profesor3: profCedula },
+              { cedula_profesor4: profCedula },
+              { cedula_profesor5: profCedula },
+            ],
+          },
+          select: { codacta: true },
+        });
+        const extraActasCodes = multiActasList.map((ma) => ma.codacta);
+
+        if (extraActasCodes.length > 0) {
+          where.OR = [
+            { cedula_profesor: profCedula },
+            { codacta: { in: extraActasCodes } },
+          ];
+        } else {
+          where.cedula_profesor = profCedula;
+        }
+      }
     }
 
     if (codcohorte) {

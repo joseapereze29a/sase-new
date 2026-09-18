@@ -553,12 +553,15 @@ export default function Home() {
   }
 
   function extractSedeFromCohorte(codcohorte: string) {
+    if (!codcohorte) return '';
     const dynamicPrefixes = directorioSedes.map(s => (s.codsede || '').toUpperCase().trim()).filter(Boolean);
     const fallbacks = ['EV', 'COC1', 'COC2', 'OCC1', 'COC', 'CPL', 'CUM', 'MAT', 'OCC', 'ORN', 'PPAL'];
-    const prefixes = Array.from(new Set([...dynamicPrefixes, ...fallbacks]));
+    const prefixes = Array.from(new Set([...dynamicPrefixes, ...fallbacks]))
+      .sort((a, b) => b.length - a.length);
     
+    const cleanCoh = codcohorte.toUpperCase().trim();
     for (const pref of prefixes) {
-      if (codcohorte.toUpperCase().startsWith(pref)) {
+      if (cleanCoh.startsWith(pref)) {
         return pref;
       }
     }
@@ -4843,29 +4846,43 @@ export default function Home() {
                         const filtered = actas
                           .filter((a) => {
                             // 1. Filtrar por búsqueda de texto
-                            const q = actaSearch.toLowerCase();
-                            const matchesSearch = (
-                              a.codacta.toLowerCase().includes(q) ||
-                              a.codasig.toLowerCase().includes(q) ||
-                              a.codcohorte.toLowerCase().includes(q) ||
-                              (a.cedula_profesor && String(a.cedula_profesor).includes(q))
-                            );
-                            if (!matchesSearch) return false;
+                            const q = actaSearch.toLowerCase().trim();
+                            if (q) {
+                              const codacta = (a.codacta || '').toLowerCase();
+                              const codasig = (a.codasig || '').toLowerCase();
+                              const codcohorte = (a.codcohorte || '').toLowerCase();
+                              const profesor = (a.profesor || '').toLowerCase();
+                              const asignatura = (a.asignatura_nombre || '').toLowerCase();
+                              const programa = (a.programa_nombre || '').toLowerCase();
+                              const cedulaProf = a.cedula_profesor ? String(a.cedula_profesor) : '';
+
+                              const matchesSearch = (
+                                codacta.includes(q) ||
+                                codasig.includes(q) ||
+                                codcohorte.includes(q) ||
+                                profesor.includes(q) ||
+                                asignatura.includes(q) ||
+                                programa.includes(q) ||
+                                cedulaProf.includes(q)
+                              );
+                              if (!matchesSearch) return false;
+                            }
 
                             // 2. Filtrar por Sede/Ciudad
                             if (filterCity) {
                               const citySede = getSedeFromCity(filterCity);
                               if (citySede) {
-                                const cohSede = extractSedeFromCohorte(a.codcohorte);
+                                const cohSede = extractSedeFromCohorte(a.codcohorte || '');
                                 if (cohSede !== citySede) return false;
                               }
                             }
 
                             // 3. Filtrar por Programa
                             if (filterProgramCode) {
-                              const suffix = filterProgramCode.includes('-') ? filterProgramCode.split('-')[1] : filterProgramCode;
-                              const cleanCohorte = a.codcohorte.toUpperCase();
-                              const cohSede = extractSedeFromCohorte(a.codcohorte);
+                              const parts = filterProgramCode.split('-');
+                              const suffix = parts.length > 1 ? parts[parts.length - 1] : filterProgramCode;
+                              const cleanCohorte = (a.codcohorte || '').toUpperCase();
+                              const cohSede = extractSedeFromCohorte(a.codcohorte || '');
                               const suffixStart = cleanCohorte.indexOf(cohSede) === 0 ? cohSede.length : 0;
                               const suffixPart = cleanCohorte.substring(suffixStart);
                               if (!suffixPart.startsWith(suffix.toUpperCase())) return false;
@@ -4878,7 +4895,7 @@ export default function Home() {
 
                             return true;
                           })
-                          .sort((a, b) => b.codacta.localeCompare(a.codacta));
+                          .sort((a, b) => (b.codacta || '').localeCompare(a.codacta || ''));
 
                         const ITEMS_PER_PAGE = 8;
                         const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
