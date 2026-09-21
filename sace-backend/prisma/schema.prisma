@@ -173,7 +173,7 @@ model directorio_cippsv {
   modalidad            directorio_cippsv_modalidad?
   director_coordinador String                       @default("") @db.VarChar(50)
   direccion            String                       @default("") @db.VarChar(255)
-  ciudad               String                       @default("") @db.VarChar(20)
+  ciudad               String                       @default("") @db.VarChar(50)
   edo_prov             String                       @default("") @db.VarChar(30)
   fax                  String?                      @db.VarChar(30)
   email                String?                      @db.VarChar(100)

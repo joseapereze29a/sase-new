@@ -445,7 +445,7 @@ export default function Home() {
     if (match) return match.ciudad;
 
     const map: { [key: string]: string } = {
-      EV: 'Entorno Virtual',
+      EV: 'Entorno Virtual (EVA)',
       COC: 'Barquisimeto',
       COC1: 'Maracay',
       COC2: 'Valencia',
@@ -537,7 +537,9 @@ export default function Home() {
     if (match) return match.codsede;
 
     const map: { [key: string]: string } = {
+      'entorno virtual (eva)': 'EV',
       'entorno virtual': 'EV',
+      'eva': 'EV',
       barquisimeto: 'COC',
       maracay: 'COC1',
       valencia: 'COC2',
@@ -7715,7 +7717,7 @@ export default function Home() {
                           <div>
                             <label style={labelStyle}>Ciudad / Nombre Identificador</label>
                             <input
-                              type="text" required placeholder="Ej: Entorno Virtual, Caracas"
+                              type="text" required placeholder="Ej: Entorno Virtual (EVA), Caracas"
                               value={newSedeAccount.ciudad}
                               onChange={(e) => setNewSedeAccount({ ...newSedeAccount, ciudad: e.target.value })}
                               style={inputStyle}
