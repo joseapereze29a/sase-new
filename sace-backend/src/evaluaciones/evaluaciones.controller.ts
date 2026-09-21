@@ -46,6 +46,13 @@ export class EvaluacionesController {
   }
 
   @UseGuards(RolesGuard)
+  @Roles(Role.SUPER_USUARIO, Role.ADMINISTRADOR, Role.COORDINADOR, Role.PROFESOR)
+  @Get('estudiantes-cohorte/:codcohorte')
+  async findEstudiantesPorCohorte(@Param('codcohorte') codcohorte: string) {
+    return this.service.findEstudiantesPorCohorte(codcohorte);
+  }
+
+  @UseGuards(RolesGuard)
   @Roles(Role.SUPER_USUARIO, Role.ADMINISTRADOR, Role.COORDINADOR)
   @Get('sugerir-profesor')
   async findLastTeacherForSubject(@Query('codasig') codasig: string) {

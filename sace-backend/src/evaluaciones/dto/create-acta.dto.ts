@@ -22,6 +22,10 @@ export class CreateActaDto {
   @IsOptional()
   cedulas_profesores?: number[];
 
+  @IsArray()
+  @IsOptional()
+  estudiantes?: { cedula: number; calificacion?: number }[];
+
   @IsDateString()
   @IsOptional()
   fecha_aprobacion?: string;

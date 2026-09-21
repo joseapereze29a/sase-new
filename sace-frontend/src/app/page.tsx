@@ -148,6 +148,12 @@ export default function Home() {
     codcohorte: '', codasig: '', codacta: '', cedula_profesor: ''
   });
   const [additionalProfs, setAdditionalProfs] = useState<string[]>([]);
+  const [actaModalidad, setActaModalidad] = useState<'LINEAL' | 'CD'>('LINEAL');
+  const [actaCdNumber, setActaCdNumber] = useState('CD1');
+  const [actaAssignType, setActaAssignType] = useState<'UNICO' | 'MULTI'>('UNICO');
+  const [actaStudents, setActaStudents] = useState<any[]>([]);
+  const [loadingActaStudents, setLoadingActaStudents] = useState(false);
+  const [manualStudentCedula, setManualStudentCedula] = useState('');
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
   const [firstTimeCedula, setFirstTimeCedula] = useState('');
   const [firstTimeEmail, setFirstTimeEmail] = useState('');
@@ -288,7 +294,7 @@ export default function Home() {
     }
   }
 
-  // Sugerir código de acta y profesor al cambiar cohorte o asignatura
+  // Sugerir código de acta y profesor al cambiar cohorte, asignatura, modalidad o número CD
   useEffect(() => {
     if (newActa.codcohorte && newActa.codasig && apiUrl) {
       // Sugerir código de acta
@@ -301,7 +307,9 @@ export default function Home() {
       } else {
         numSuffix = newActa.codasig.substring(newActa.codasig.length - 2).toUpperCase();
       }
-      const suggestedActa = `${cleanCohorte}-${numSuffix}`.toUpperCase();
+      
+      const cdSuffix = actaModalidad === 'CD' ? (actaCdNumber || 'CD1') : '';
+      const suggestedActa = `${cleanCohorte}-${numSuffix}${cdSuffix}`.toUpperCase();
       setNewActa(prev => ({ ...prev, codacta: suggestedActa }));
 
       // Consultar sugerencia de profesor en el backend
@@ -321,7 +329,58 @@ export default function Home() {
           setSuggestedTeacherName('');
         });
     }
-  }, [newActa.codcohorte, newActa.codasig, apiUrl]);
+  }, [newActa.codcohorte, newActa.codasig, actaModalidad, actaCdNumber, apiUrl]);
+
+  // Cargar estudiantes automáticamente cuando cambia la cohorte
+  useEffect(() => {
+    if (newActa.codcohorte && apiUrl && showCreateActa) {
+      loadCohorteStudents(newActa.codcohorte);
+    }
+  }, [newActa.codcohorte, apiUrl, showCreateActa]);
+
+  async function loadCohorteStudents(codcohorte: string) {
+    if (!codcohorte) return;
+    setLoadingActaStudents(true);
+    try {
+      const res = await fetch(`${apiUrl}/evaluaciones/estudiantes-cohorte/${encodeURIComponent(codcohorte)}`, { headers: getHeaders() });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setActaStudents(data.map(s => ({
+          cedula: s.cedula,
+          nombre_completo: s.nombre_completo,
+          calificacion: ''
+        })));
+      }
+    } catch (e) {
+      console.error('Error loading cohorte students:', e);
+    } finally {
+      setLoadingActaStudents(false);
+    }
+  }
+
+  async function handleAddManualStudent() {
+    if (!manualStudentCedula) return;
+    const ced = Number(manualStudentCedula);
+    if (isNaN(ced) || ced <= 0) return;
+    if (actaStudents.some(s => Number(s.cedula) === ced)) {
+      alert('El estudiante ya se encuentra en la lista');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/datos-personales/${ced}`, { headers: getHeaders() });
+      const data = await res.json();
+      let nombre = `Estudiante C.I. ${ced}`;
+      if (data && !data.error) {
+        nombre = `${data.apellidos || ''} ${data.nombres || ''}`.trim() || nombre;
+      }
+      setActaStudents(prev => [...prev, { cedula: ced, nombre_completo: nombre, calificacion: '' }]);
+      setManualStudentCedula('');
+    } catch (e) {
+      setActaStudents(prev => [...prev, { cedula: ced, nombre_completo: `Estudiante C.I. ${ced}`, calificacion: '' }]);
+      setManualStudentCedula('');
+    }
+  }
 
   function getProgramInitials(text: string) {
     if (!text) return '';
@@ -981,6 +1040,17 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     try {
+      const mainProf = newActa.cedula_profesor ? Number(newActa.cedula_profesor) : undefined;
+      const extraProfs = actaAssignType === 'MULTI' ? additionalProfs.map(Number).filter(n => !isNaN(n) && n > 0) : [];
+      const allProfs = mainProf ? [mainProf, ...extraProfs] : extraProfs;
+
+      const estudiantesPayload = actaStudents
+        .map(s => ({
+          cedula: Number(s.cedula),
+          calificacion: s.calificacion !== '' && s.calificacion !== null && !isNaN(Number(s.calificacion)) ? Number(s.calificacion) : undefined
+        }))
+        .filter(s => !isNaN(s.cedula) && s.cedula > 0);
+
       const res = await fetch(`${apiUrl}/evaluaciones/actas`, {
         method: 'POST',
         headers: getHeaders(),
@@ -988,17 +1058,24 @@ export default function Home() {
           codcohorte: newActa.codcohorte,
           codasig: newActa.codasig,
           codacta: newActa.codacta,
-          cedula_profesor: newActa.cedula_profesor ? Number(newActa.cedula_profesor) : undefined,
-          cedulas_profesores: additionalProfs.map(Number).filter(n => !isNaN(n) && n > 0)
+          cedula_profesor: mainProf,
+          cedulas_profesores: allProfs.length > 0 ? [...new Set(allProfs)] : undefined,
+          estudiantes: estudiantesPayload.length > 0 ? estudiantesPayload : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error al crear acta');
-      setMessage({ type: 'success', text: `Acta ${newActa.codacta} creada exitosamente` });
+      
+      const successMsg = `Acta ${newActa.codacta} creada exitosamente` + (estudiantesPayload.length > 0 ? ` con ${estudiantesPayload.length} estudiantes registrados.` : '.');
+      setMessage({ type: 'success', text: successMsg });
       setActas([data, ...actas]);
       setShowCreateActa(false);
       setNewActa({ codcohorte: '', codasig: '', codacta: '', cedula_profesor: '' });
       setAdditionalProfs([]);
+      setActaStudents([]);
+      setActaModalidad('LINEAL');
+      setActaCdNumber('CD1');
+      setActaAssignType('UNICO');
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
     } finally {
@@ -5089,11 +5166,87 @@ export default function Home() {
 
             {/* Create Acta Modal */}
             {showCreateActa && (
-              <div style={modalBackdropStyle}>
-                <div style={modalContentStyle}>
-                  <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: 700 }}>Crear Acta de Evaluación</h3>
-                  <form onSubmit={handleCreateActa} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Ciudad / Sede */}
+              <div style={{ ...modalBackdropStyle, zIndex: 9999 }}>
+                <div style={{ ...modalContentStyle, maxWidth: '850px', maxHeight: '90vh', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#f8fafc' }}>
+                      📋 Crear Nueva Acta de Evaluación
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateActa(false)}
+                      style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '18px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateActa} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    
+                    {/* 1. SELECCIÓN DE MODALIDAD DEL ACTA (LINEAL VS CD) */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <label style={{ ...labelStyle, fontSize: '12px', color: '#a78bfa', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
+                        1. Modalidad y Secuencia del Acta
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div
+                          onClick={() => setActaModalidad('LINEAL')}
+                          style={{
+                            padding: '12px',
+                            borderRadius: '10px',
+                            border: actaModalidad === 'LINEAL' ? '2px solid #a78bfa' : '1px solid rgba(255,255,255,0.1)',
+                            background: actaModalidad === 'LINEAL' ? 'rgba(167,139,250,0.1)' : 'rgba(255,255,255,0.01)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          <div style={{ fontWeight: 700, fontSize: '14px', color: actaModalidad === 'LINEAL' ? '#a78bfa' : '#fff' }}>
+                            📘 Acta Lineal (Regular)
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
+                            Evaluación ordinaria del grupo regular de la cohorte.
+                          </div>
+                        </div>
+
+                        <div
+                          onClick={() => setActaModalidad('CD')}
+                          style={{
+                            padding: '12px',
+                            borderRadius: '10px',
+                            border: actaModalidad === 'CD' ? '2px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
+                            background: actaModalidad === 'CD' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.01)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          <div style={{ fontWeight: 700, fontSize: '14px', color: actaModalidad === 'CD' ? '#fbbf24' : '#fff' }}>
+                            📙 Curso Dirigido (CD)
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
+                            Tutoría / evaluación especial diferida o de nivelación.
+                          </div>
+                        </div>
+                      </div>
+
+                      {actaModalidad === 'CD' && (
+                        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <label style={{ ...labelStyle, margin: 0, fontSize: '12px' }}>N° de Curso Dirigido:</label>
+                          <select
+                            value={actaCdNumber}
+                            onChange={(e) => setActaCdNumber(e.target.value)}
+                            style={{ ...inputStyle, width: '160px', height: '36px', background: '#120f30', margin: 0 }}
+                          >
+                            <option value="CD1">CD1 (Curso Dirigido 1)</option>
+                            <option value="CD2">CD2 (Curso Dirigido 2)</option>
+                            <option value="CD3">CD3 (Curso Dirigido 3)</option>
+                            <option value="CD4">CD4 (Curso Dirigido 4)</option>
+                            <option value="CD5">CD5 (Curso Dirigido 5)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 2. UBICACIÓN, COHORTE Y ASIGNATURA */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                       <div>
                         <label style={labelStyle}>Sede (Ciudad)</label>
@@ -5128,7 +5281,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Cohorte y Materia */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                       <div>
                         <label style={labelStyle}>Cohorte</label>
@@ -5166,7 +5318,7 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Código del Acta */}
+                    {/* Código del Acta Auto-sugerido */}
                     <div>
                       <label style={labelStyle}>Código de Acta</label>
                       <input
@@ -5178,45 +5330,77 @@ export default function Home() {
                         style={inputStyle}
                       />
                       <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', display: 'block' }}>
-                        Código auto-sugerido. Puedes modificarlo si es necesario.
+                        Código auto-sugerido ({actaModalidad === 'CD' ? `Modo Curso Dirigido ${actaCdNumber}` : 'Modo Acta Lineal'}). Puedes ajustarlo manualmente si lo deseas.
                       </span>
                     </div>
 
-                    {/* Profesor */}
-                    <div>
-                      <label style={labelStyle}>Cédula Profesor Asignado (Opcional)</label>
-                      <input
-                        type="number"
-                        placeholder="Se autocompleta con el último docente de esta materia..."
-                        value={newActa.cedula_profesor}
-                        onChange={(e) => {
-                          setNewActa({ ...newActa, cedula_profesor: e.target.value });
-                          setSuggestedTeacherName(''); // Limpiar si escribe manualmente
-                        }}
-                        style={inputStyle}
-                      />
-                      {suggestedTeacherName && (
-                        <span style={{ fontSize: '11px', color: '#a78bfa', marginTop: '4px', display: 'block', fontWeight: 600 }}>
-                          👤 Docente sugerido: {suggestedTeacherName}
-                        </span>
-                      )}
-                    </div>
+                    {/* 3. TIPO DE ASIGNACIÓN DOCENTE (ÚNICO VS MULTIACTA) */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <label style={{ ...labelStyle, fontSize: '12px', color: '#a78bfa', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
+                        2. Asignación Docente
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                        <div
+                          onClick={() => setActaAssignType('UNICO')}
+                          style={{
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            border: actaAssignType === 'UNICO' ? '2px solid #a78bfa' : '1px solid rgba(255,255,255,0.1)',
+                            background: actaAssignType === 'UNICO' ? 'rgba(167,139,250,0.1)' : 'transparent',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 600
+                          }}
+                        >
+                          👤 Profesor Único
+                        </div>
+                        <div
+                          onClick={() => setActaAssignType('MULTI')}
+                          style={{
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            border: actaAssignType === 'MULTI' ? '2px solid #a78bfa' : '1px solid rgba(255,255,255,0.1)',
+                            background: actaAssignType === 'MULTI' ? 'rgba(167,139,250,0.1)' : 'transparent',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 600
+                          }}
+                        >
+                          👥 Multiacta (Jurado / Co-tutores)
+                        </div>
+                      </div>
 
-                    {(() => {
-                      if (!newActa.codasig) return null;
+                      <div>
+                        <label style={labelStyle}>Cédula Profesor Principal / Titular</label>
+                        <input
+                          type="number"
+                          placeholder="Se autocompleta con el último docente de esta materia..."
+                          value={newActa.cedula_profesor}
+                          onChange={(e) => {
+                            setNewActa({ ...newActa, cedula_profesor: e.target.value });
+                            setSuggestedTeacherName('');
+                          }}
+                          style={inputStyle}
+                        />
+                        {suggestedTeacherName && (
+                          <span style={{ fontSize: '11px', color: '#a78bfa', marginTop: '4px', display: 'block', fontWeight: 600 }}>
+                            👤 Docente sugerido: {suggestedTeacherName}
+                          </span>
+                        )}
+                      </div>
 
-                      return (
-                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#a78bfa' }}>
-                            🎓 Profesores Adicionales (Jurados / Co-tutores)
+                      {actaAssignType === 'MULTI' && (
+                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#a78bfa' }}>
+                            🎓 Profesores Adicionales en Multiacta (Jurados 2 a 5)
                           </div>
                           {additionalProfs.map((cedula, index) => (
                             <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
                               <div style={{ flex: 1 }}>
-                                <label style={{ ...labelStyle, fontSize: '11.5px' }}>Cédula de Jurado/Co-tutor {index + 2}</label>
+                                <label style={{ ...labelStyle, fontSize: '11px' }}>Jurado / Co-tutor {index + 2}</label>
                                 <input
                                   type="number"
-                                  placeholder={`C.I. Docente ${index + 2}...`}
+                                  placeholder={`C.I. Profesor ${index + 2}...`}
                                   value={cedula}
                                   onChange={(e) => {
                                     const updated = [...additionalProfs];
@@ -5228,18 +5412,8 @@ export default function Home() {
                               </div>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setAdditionalProfs(additionalProfs.filter((_, i) => i !== index));
-                                }}
-                                style={{
-                                  ...btnStyleSecondary,
-                                  height: '36px',
-                                  padding: '0 12px',
-                                  fontSize: '12px',
-                                  borderColor: 'rgba(248,113,113,0.4)',
-                                  color: '#f87171',
-                                  background: 'rgba(248,113,113,0.05)'
-                                }}
+                                onClick={() => setAdditionalProfs(additionalProfs.filter((_, i) => i !== index))}
+                                style={{ ...btnStyleSecondary, height: '36px', padding: '0 10px', fontSize: '12px', color: '#f87171' }}
                               >
                                 Eliminar
                               </button>
@@ -5249,26 +5423,126 @@ export default function Home() {
                             <button
                               type="button"
                               onClick={() => setAdditionalProfs([...additionalProfs, ''])}
-                              style={{
-                                ...btnStyleSecondary,
-                                alignSelf: 'flex-start',
-                                padding: '6px 12px',
-                                fontSize: '12px',
-                                borderColor: 'rgba(167,139,250,0.4)',
-                                color: '#a78bfa',
-                                background: 'rgba(167,139,250,0.05)'
-                              }}
+                              style={{ ...btnStyleSecondary, alignSelf: 'flex-start', padding: '4px 10px', fontSize: '12px', color: '#a78bfa' }}
                             >
-                              + Agregar Profesor
+                              + Agregar Profesor a Multiacta
                             </button>
                           )}
                         </div>
-                      );
-                    })()}
+                      )}
+                    </div>
 
-                    <div style={{ display: 'flex', justifySelf: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                    {/* 4. CARGAR ESTUDIANTES Y NOTAS DE UNA VEZ */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '13px', color: '#a78bfa', textTransform: 'uppercase' }}>
+                            3. Carga de Estudiantes y Calificaciones (0 - 20)
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
+                            {actaStudents.length > 0 ? `${actaStudents.length} estudiantes listos para registrar en el acta` : 'Puedes cargar los estudiantes de la cohorte o agregarlos individualmente.'}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            disabled={!newActa.codcohorte || loadingActaStudents}
+                            onClick={() => loadCohorteStudents(newActa.codcohorte)}
+                            style={{
+                              ...btnStyleSecondary,
+                              padding: '6px 12px',
+                              fontSize: '11px',
+                              borderColor: 'rgba(167,139,250,0.4)',
+                              color: '#a78bfa',
+                              background: 'rgba(167,139,250,0.1)',
+                              opacity: !newActa.codcohorte ? 0.4 : 1
+                            }}
+                          >
+                            {loadingActaStudents ? '⏳ Cargando...' : '⚡ Cargar Estudiantes de Cohorte'}
+                          </button>
+                          {actaStudents.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setActaStudents([])}
+                              style={{ ...btnStyleSecondary, padding: '6px 10px', fontSize: '11px', color: '#f87171' }}
+                            >
+                              Limpiar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Agregar Estudiante Manualmente */}
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          placeholder="Ingresar C.I. Estudiante para agregar..."
+                          value={manualStudentCedula}
+                          onChange={(e) => setManualStudentCedula(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddManualStudent(); } }}
+                          style={{ ...inputStyle, margin: 0, height: '36px', flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddManualStudent}
+                          style={{ ...btnStylePrimary, height: '36px', padding: '0 12px', fontSize: '12px' }}
+                        >
+                          + Agregar
+                        </button>
+                      </div>
+
+                      {/* Tabla de Estudiantes */}
+                      {actaStudents.length > 0 && (
+                        <div style={{ maxHeight: '250px', overflowY: 'auto', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                            <thead>
+                              <tr style={{ background: 'rgba(255,255,255,0.05)', textAlign: 'left', color: 'rgba(255,255,255,0.6)' }}>
+                                <th style={{ padding: '8px 12px' }}>Cédula</th>
+                                <th style={{ padding: '8px 12px' }}>Nombre y Apellido</th>
+                                <th style={{ padding: '8px 12px', width: '140px' }}>Calificación (0-20)</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'center', width: '60px' }}>Acción</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {actaStudents.map((st, idx) => (
+                                <tr key={st.cedula} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                  <td style={{ padding: '8px 12px', fontWeight: 600 }}>{st.cedula}</td>
+                                  <td style={{ padding: '8px 12px' }}>{st.nombre_completo}</td>
+                                  <td style={{ padding: '8px 12px' }}>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="20"
+                                      placeholder="Nota (0-20)..."
+                                      value={st.calificacion}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setActaStudents(prev => prev.map((s, i) => i === idx ? { ...s, calificacion: val } : s));
+                                      }}
+                                      style={{ ...inputStyle, margin: 0, height: '32px', padding: '4px 8px', fontSize: '12px' }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActaStudents(prev => prev.filter((_, i) => i !== idx))}
+                                      style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '14px' }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
                       <button type="button" onClick={() => setShowCreateActa(false)} style={btnStyleSecondary}>Cancelar</button>
-                      <button type="submit" style={btnStylePrimary}>Crear Acta</button>
+                      <button type="submit" style={btnStylePrimary}>Crear Acta y Guardar Registros</button>
                     </div>
                   </form>
                 </div>

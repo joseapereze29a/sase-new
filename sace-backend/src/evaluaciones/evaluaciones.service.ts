@@ -316,7 +316,62 @@ export class EvaluacionesService {
       });
     }
 
+    if (dto.estudiantes && dto.estudiantes.length > 0) {
+      for (const est of dto.estudiantes) {
+        if (est.cedula) {
+          const calif = est.calificacion !== undefined && est.calificacion !== null && est.calificacion >= 0 ? Number(est.calificacion) : null;
+          await this.prisma.recordNotas.upsert({
+            where: {
+              codacta_cedula: {
+                codacta: dto.codacta,
+                cedula: Number(est.cedula),
+              },
+            },
+            create: {
+              codacta: dto.codacta,
+              cedula: Number(est.cedula),
+              calificacion: calif,
+              fecha_creacion: new Date(),
+            },
+            update: {
+              calificacion: calif,
+              fecha_modificacion: new Date(),
+            },
+          });
+        }
+      }
+    }
+
     return createdActa;
+  }
+
+  async findEstudiantesPorCohorte(codcohorte: string) {
+    const statusRecords = await this.prisma.status.findMany({
+      where: { codcohorte },
+      select: { cedula: true },
+    });
+
+    let cedulas = statusRecords.map((s) => s.cedula).filter((c): c is number => typeof c === 'number' && c > 0);
+    cedulas = [...new Set(cedulas)];
+
+    if (cedulas.length === 0) {
+      return [];
+    }
+
+    const estudiantes = await this.prisma.datosPersonales.findMany({
+      where: { cedula: { in: cedulas } },
+      select: {
+        cedula: true,
+        nombres: true,
+        apellidos: true,
+      },
+      orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }],
+    });
+
+    return estudiantes.map((e) => ({
+      cedula: e.cedula,
+      nombre_completo: `${e.apellidos || ''} ${e.nombres || ''}`.trim() || `Estudiante C.I. ${e.cedula}`,
+    }));
   }
 
   async updateActa(
