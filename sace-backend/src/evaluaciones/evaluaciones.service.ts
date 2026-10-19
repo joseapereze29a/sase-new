@@ -875,9 +875,18 @@ export class EvaluacionesService {
       doc.text('ACTA DE EVALUACIÓN ESCOLAR', 50, yHeaderEnd, { align: 'center' });
 
       const yMeta = yHeaderEnd + 18;
+      const tipoClean = prog?.tipo ? String(prog.tipo).trim() : '';
+      const mencionRaw = prog ? (prog.mencion_especialidad || prog.titulo_a_otorgar) : '';
+      let mencionClean = (mencionRaw || '').trim().replace(/^(en\s+)?ciencias\s+menci[oó]n\s+/i, '').replace(/^menci[oó]n\s+/i, '').trim();
+      const programNameFormatted = prog
+        ? (mencionClean 
+            ? (/^en\s+/i.test(mencionClean) ? `${tipoClean} ${mencionClean}` : `${tipoClean} en ${mencionClean}`)
+            : (tipoClean || mencionRaw))
+        : 'Postgrado';
+
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000');
       doc.text('Programa: ', 50, yMeta, { lineBreak: false } as any)
-         .font('Helvetica').text(prog ? `${prog.tipo} en Ciencias Mención ${prog.mencion_especialidad || prog.titulo_a_otorgar}` : 'Postgrado');
+         .font('Helvetica').text(programNameFormatted);
 
       doc.font('Helvetica-Bold').text('Asignatura: ', 50, yMeta + 11, { lineBreak: false } as any)
          .font('Helvetica').text(`${asignatura_nombre} (${codasig})`);
@@ -960,8 +969,8 @@ export class EvaluacionesService {
       doc.text('FIRMA DEL PROFESOR', 50, currentY + 3, { align: 'center', width: 130 });
       doc.text(`C.I. ${acta.cedula_profesor || ''}`, 50, currentY + 12, { align: 'center', width: 130 });
 
-      doc.text('Lic. Mercedes Labrador', 215, currentY + 3, { align: 'center', width: 130 });
-      doc.text('Jefe de Control de Estudios', 215, currentY + 12, { align: 'center', width: 130 });
+      doc.text('Tec Sup. Mercedes Labrador', 215, currentY + 3, { align: 'center', width: 130 });
+      doc.text('Jefe Control de Estudios', 215, currentY + 12, { align: 'center', width: 130 });
 
       doc.text('Esp. Herman Y. Bandez S.', 370, currentY + 3, { align: 'center', width: 130 });
       doc.text('Secretario', 370, currentY + 12, { align: 'center', width: 130 });

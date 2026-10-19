@@ -475,13 +475,20 @@ export class DatosPersonalesService {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', (err) => reject(err));
 
-      const studentNombres = (student.nombres || '').toUpperCase();
-      const studentApellidos = (student.apellidos || '').toUpperCase();
+      const toTitleCase = (str?: string | null) => {
+        if (!str) return '';
+        return str.toLowerCase().replace(/(^|[\s\-\.])[a-záéíóúñ]/gu, (m) => m.toUpperCase());
+      };
+      const studentFullName = `${toTitleCase(student.nombres)} ${toTitleCase(student.apellidos)}`.trim() || `${student.nombres || ''} ${student.apellidos || ''}`.trim();
       const nacLetter = student.nacionalidad === 'Venezolana' ? 'V' : 'E';
       const formattedCedula = student.cedula.toLocaleString('es-VE').replace(/\./g, '.');
       const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
       const today = new Date();
-      const dateStringFull = `${ciudad}, ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}`;
+      const dayStr = String(today.getDate()).padStart(2, '0');
+      const monthStr = meses[today.getMonth()];
+      const yearStr = today.getFullYear();
+      const fechaExpedicion = `${dayStr} de ${monthStr} de ${yearStr}`;
+      const dateStringFull = `${ciudad}, ${fechaExpedicion}`;
 
       if (certificadas) {
         // --- PORTADA DE NOTAS CERTIFICADAS (PÁGINA 1) ---
@@ -501,42 +508,51 @@ export class DatosPersonalesService {
         doc.strokeColor('#002855').lineWidth(1.5);
         doc.moveTo(180, 242).lineTo(415, 242).stroke();
 
-        const textP1 = `El suscrito SECRETARIO del CENTRO DE INVESTIGACIONES PSIQUIÁTRICAS, PSICOLÓGICAS Y SEXOLÓGICAS DE VENEZUELA, certifica que en el archivo de esta institución, aparece inscrito(a) el (la) ciudadano(a) ${studentNombres} ${studentApellidos}, titular de la cédula de identidad No ${nacLetter} - ${formattedCedula}, y en cuyo registro académico consta que obtuvo las calificaciones contenidas en el presente documento.`;
+        const textP1 = 'El suscrito SECRETARIO del CENTRO DE INVESTIGACIONES PSIQUIATRICAS, PSICOLÓGICAS Y SEXOLÓGICAS DE VENEZUELA, certifica que en el archivo de esta institución, aparece inscrito(a) el (la) ciudadano(a)';
 
         doc.font('Helvetica').fontSize(10.5).fillColor('#000000');
-        doc.text(textP1, 65, 270, { align: 'justify', width: 465, lineGap: 6 });
+        doc.text(textP1, 65, 262, { align: 'justify', width: 465, lineGap: 5 });
 
-        const textScale = `Se hace constar que el sistema de calificaciones vigente para esta fecha es de uno a veinte (01 a 20) puntos. La nota mínima aprobatoria es de quince (15) puntos.`;
-        doc.text(textScale, 65, 360, { align: 'justify', width: 465, lineGap: 5 });
+        doc.moveDown(0.7);
+        doc.font('Helvetica-Bold').fontSize(12).fillColor('#17365D');
+        doc.text(studentFullName, 65, doc.y, { align: 'center', width: 465 });
 
-        const dateExpedicion = `Se expide la presente CERTIFICACIÓN a solicitud de parte interesada en la ciudad de ${ciudad}, el ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}.`;
-        doc.text(dateExpedicion, 65, 420, { align: 'justify', width: 465, lineGap: 5 });
+        doc.moveDown(0.7);
+        const textP2 = `Titular de la cédula de identidad No ${formattedCedula} y en cuyo registro académico consta que obtuvo las calificaciones contenidas en el presente documento. Se hace constar que el sistema de calificaciones vigente para esta fecha es de uno a veinte puntos. La nota mínima aprobatoria es de quince (15) puntos. Se expide la presente CERTIFICACION a solicitud de parte interesada en la ciudad de ${ciudad}, ${fechaExpedicion}.`;
 
+        doc.font('Helvetica').fontSize(10.5).fillColor('#000000');
+        doc.text(textP2, 65, doc.y, { align: 'justify', width: 465, lineGap: 5 });
+
+        const yFirmaSec = Math.max(doc.y + 40, 480);
         doc.strokeColor('#000000').lineWidth(0.75);
-        doc.moveTo(180, 500).lineTo(415, 500).stroke();
+        doc.moveTo(185, yFirmaSec).lineTo(410, yFirmaSec).stroke();
 
-        const certFirma = `Certifico que la firma anterior corresponde efectivamente al Esp. HERMAN YURI BANDEZ SUÁREZ, quien es para la época de la firma el Secretario de esta Institución.`;
+        const certFirma = 'Certifico que la firma anterior corresponde efectivamente al Esp. HERMAN YURI BANDEZ SUAREZ, quien es para la época de la firma el Secretario de esta Institución.';
         doc.font('Helvetica-Oblique').fontSize(9.5).fillColor('#333333');
-        doc.text(certFirma, 65, 510, { align: 'center', width: 465, lineGap: 4 });
+        doc.text(certFirma, 65, yFirmaSec + 10, { align: 'center', width: 465, lineGap: 4 });
 
         doc.font('Helvetica').fontSize(10).fillColor('#000000');
-        doc.text(dateStringFull, 65, 560, { align: 'center', width: 465 });
+        doc.text(`${ciudad}, ${fechaExpedicion}`, 65, yFirmaSec + 55, { align: 'center', width: 465 });
 
-        doc.strokeColor('#000000').lineWidth(0.75);
-        doc.moveTo(65, 660).lineTo(235, 660).stroke();
-        doc.moveTo(295, 660).lineTo(465, 660).stroke();
-
-        doc.font('Helvetica-Bold').fontSize(9.5);
-        doc.text('Dr. Eduardo Bianco Colmenares', 65, 665, { align: 'center', width: 170 });
-        doc.font('Helvetica').fontSize(9);
-        doc.text('Director', 65, 678, { align: 'center', width: 170 });
+        const yBottom = Math.max(doc.y + 45, 655);
 
         doc.font('Helvetica-Oblique').fontSize(8.5).fillColor('#555555');
-        doc.text('Preparado por:', 295, 648, { align: 'center', width: 170 });
+        doc.text('Preparado por:', 65, yBottom, { align: 'center', width: 180 });
+
+        const yBottomLine = yBottom + 25;
+        doc.strokeColor('#000000').lineWidth(0.75);
+        doc.moveTo(65, yBottomLine).lineTo(245, yBottomLine).stroke();
+        doc.moveTo(320, yBottomLine).lineTo(500, yBottomLine).stroke();
+
         doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000');
-        doc.text('Lic. Mercedes Labrador', 295, 665, { align: 'center', width: 170 });
+        doc.text('Tec Sup. Mercedes Labrador', 65, yBottomLine + 6, { align: 'center', width: 180 });
         doc.font('Helvetica').fontSize(9);
-        doc.text('Jefe Control de Estudios', 295, 678, { align: 'center', width: 170 });
+        doc.text('Jefe Control de Estudios', 65, yBottomLine + 19, { align: 'center', width: 180 });
+
+        doc.font('Helvetica-Bold').fontSize(9.5);
+        doc.text('Dr. Eduardo Bianco Colmenares', 320, yBottomLine + 6, { align: 'center', width: 180 });
+        doc.font('Helvetica').fontSize(9);
+        doc.text('Director', 320, yBottomLine + 19, { align: 'center', width: 180 });
 
         doc.addPage();
       }
@@ -559,7 +575,12 @@ export class DatosPersonalesService {
 
       // Nombre del programa
       doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#000000');
-      doc.text(`${esp.tipo} en Ciencias Mención ${esp.mencion}`, 50, yHeaderEnd, { align: 'center' });
+      const tipoClean = (esp.tipo || '').trim();
+      let mencionClean = (esp.mencion || '').trim().replace(/^(en\s+)?ciencias\s+menci[oó]n\s+/i, '').replace(/^menci[oó]n\s+/i, '').trim();
+      const programNameFormatted = mencionClean 
+        ? (/^en\s+/i.test(mencionClean) ? `${tipoClean} ${mencionClean}` : `${tipoClean} en ${mencionClean}`)
+        : tipoClean;
+      doc.text(programNameFormatted, 50, yHeaderEnd, { align: 'center' });
 
       // Datos personales (2 columnas para ahorrar espacio)
       const yMeta = yHeaderEnd + 16;
@@ -659,8 +680,8 @@ export class DatosPersonalesService {
       doc.moveTo(330, currentY).lineTo(500, currentY).stroke();
 
       doc.font('Helvetica').fontSize(8);
-      doc.text('Lic. Mercedes Labrador', 50, currentY + 3, { align: 'center', width: 170 });
-      doc.text('Jefe de Control de Estudios', 50, currentY + 12, { align: 'center', width: 170 });
+      doc.text('Tec Sup. Mercedes Labrador', 50, currentY + 3, { align: 'center', width: 170 });
+      doc.text('Jefe Control de Estudios', 50, currentY + 12, { align: 'center', width: 170 });
 
       doc.text('Esp. Herman Y. Bandez S.', 330, currentY + 3, { align: 'center', width: 170 });
       doc.text('Secretario', 330, currentY + 12, { align: 'center', width: 170 });
