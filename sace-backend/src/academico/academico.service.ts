@@ -416,6 +416,7 @@ export class AcademicoService {
   }
 
   async generatePensumPdf(codsede: string, codopest: string): Promise<Buffer> {
+    console.log(`[AcademicoService] Generando Pensum PDF v2 para programa: "${codopest}", sede: "${codsede}"`);
     // 1. Obtener la oportunidad de estudio (programa)
     let programa = codsede
       ? await this.prisma.oportunidadesEstudio.findUnique({
