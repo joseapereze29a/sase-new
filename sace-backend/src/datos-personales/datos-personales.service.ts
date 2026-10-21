@@ -577,6 +577,8 @@ export class DatosPersonalesService {
       doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#000000');
       const tipoClean = (esp.tipo || '').trim();
       let mencionClean = (esp.mencion || '').trim().replace(/^(en\s+)?ciencias\s+menci[oó]n\s+/i, '').replace(/^menci[oó]n\s+/i, '').trim();
+      mencionClean = mencionClean.replace(/^orientaci[oó]n\s+(en\s+)?psicopol[ií]tica/gi, 'Psicopolítica');
+      mencionClean = mencionClean.replace(/^orientaci[oó]n\s+psicopol[ií]tica/gi, 'Psicopolítica');
       const programNameFormatted = mencionClean 
         ? (/^en\s+/i.test(mencionClean) ? `${tipoClean} ${mencionClean}` : `${tipoClean} en ${mencionClean}`)
         : tipoClean;

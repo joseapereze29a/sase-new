@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOportunidadDto } from './dto/create-oportunidad.dto';
 import { UpdateOportunidadDto } from './dto/update-oportunidad.dto';
@@ -29,12 +29,82 @@ function cleanProgramName(str?: string | null): string {
   let clean = cleanHtmlEntities(str);
   clean = clean.replace(/en\s+ciencias\s+menci[oó]n\s+/i, 'en ');
   clean = clean.replace(/ciencias\s+menci[oó]n\s+/i, '');
+  clean = clean.replace(/orientaci[oó]n\s+(en\s+)?psicopol[ií]tica/gi, 'Psicopolítica');
+  clean = clean.replace(/orientaci[oó]n\s+psicopol[ií]tica/gi, 'Psicopolítica');
+  if (/^mag[ií]ster\s+en\s+psicopol[ií]tica/i.test(clean)) {
+    clean = 'Maestría en Psicopolítica';
+  }
   return clean.trim();
 }
 
 @Injectable()
-export class AcademicoService {
+export class AcademicoService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      // 1. Asegurar que MC-PP tenga el título correcto sin "Orientación"
+      await this.prisma.oportunidadesEstudio.updateMany({
+        where: { codopest: 'MC-PP' },
+        data: {
+          mencion_especialidad: 'Psicopolítica',
+          titulo_a_otorgar: 'Maestría en Psicopolítica',
+        },
+      });
+
+      // 2. Asegurar que las prelaciones de MC-PP existan en todas las sedes
+      const existingPP = await this.prisma.pensum_prelaciones.count({
+        where: { codopest: 'MC-PP' },
+      });
+      if (existingPP === 0) {
+        const sedes = ['COC', 'COC1', 'COC2', 'CPL', 'CUM', 'EV', 'MAT', 'OCC', 'OCC1', 'ORN', 'PPAL'];
+        const prelsDefinition = [
+          { codasig: 'PP-002', prelacion: 'PP-001' },
+          { codasig: 'PP-006', prelacion: 'PP-005' },
+          { codasig: 'PP-013', prelacion: 'PP-012' },
+          { codasig: 'PP-018', prelacion: 'PP-017' },
+          { codasig: 'PP-003', prelacion: 'PP-002' },
+          { codasig: 'PP-007', prelacion: 'PP-006' },
+          { codasig: 'PP-009', prelacion: 'PP-006' },
+          { codasig: 'PP-010', prelacion: 'PP-009' },
+          { codasig: 'PP-014', prelacion: 'PP-013' },
+          { codasig: 'PP-004', prelacion: 'PP-003' },
+          { codasig: 'PP-008', prelacion: 'PP-007' },
+          { codasig: 'PP-011', prelacion: 'PP-010' },
+          { codasig: 'PP-015', prelacion: 'PP-014' },
+          { codasig: 'PP-019', prelacion: 'PP-008' },
+          { codasig: 'PP-019', prelacion: 'PP-015' },
+          { codasig: 'PP-020', prelacion: 'PP-016' },
+          { codasig: 'PP-021', prelacion: 'PP-019' },
+          { codasig: 'PP-022', prelacion: 'PP-020' },
+          { codasig: 'PP-022', prelacion: 'PP-021' },
+        ];
+        for (const s of sedes) {
+          for (const p of prelsDefinition) {
+            await this.prisma.pensum_prelaciones.upsert({
+              where: {
+                codsede_codopest_codasig_prelacion: {
+                  codsede: s,
+                  codopest: 'MC-PP',
+                  codasig: p.codasig,
+                  prelacion: p.prelacion,
+                },
+              },
+              update: {},
+              create: {
+                codsede: s,
+                codopest: 'MC-PP',
+                codasig: p.codasig,
+                prelacion: p.prelacion,
+              },
+            });
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn('Error inicializando datos de MC-PP:', e.message);
+    }
+  }
 
   async findAllAsignaturasCatalogo(search?: string) {
     const where: any = {};
