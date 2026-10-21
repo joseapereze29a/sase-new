@@ -5,6 +5,32 @@ import { UpdateOportunidadDto } from './dto/update-oportunidad.dto';
 import { CreatePensumDto } from './dto/create-pensum.dto';
 import { UpdatePensumDto } from './dto/update-pensum.dto';
 import PDFDocument from 'pdfkit';
+import * as fs from 'fs';
+
+function cleanHtmlEntities(str?: string | null): string {
+  if (!str) return '';
+  return str
+    .replace(/&oacute;/gi, 'ó')
+    .replace(/&iacute;/gi, 'í')
+    .replace(/&aacute;/gi, 'á')
+    .replace(/&eacute;/gi, 'é')
+    .replace(/&uacute;/gi, 'ú')
+    .replace(/&ntilde;/gi, 'ñ')
+    .replace(/&Oacute;/gi, 'Ó')
+    .replace(/&Iacute;/gi, 'Í')
+    .replace(/&Aacute;/gi, 'Á')
+    .replace(/&Eacute;/gi, 'É')
+    .replace(/&Uacute;/gi, 'Ú')
+    .replace(/&Ntilde;/gi, 'Ñ');
+}
+
+function cleanProgramName(str?: string | null): string {
+  if (!str) return '';
+  let clean = cleanHtmlEntities(str);
+  clean = clean.replace(/en\s+ciencias\s+menci[oó]n\s+/i, 'en ');
+  clean = clean.replace(/ciencias\s+menci[oó]n\s+/i, '');
+  return clean.trim();
+}
 
 @Injectable()
 export class AcademicoService {
@@ -235,19 +261,28 @@ export class AcademicoService {
     const codsSede = [...new Set(items.map((i) => i.codsede))];
     const codsOpest = [...new Set(items.map((i) => i.codopest))];
     const codsAsig = items.map((i) => i.codasig);
+    const codsImp = items.map((i) => i.codasig_imp).filter(Boolean) as string[];
+    const allQueryCodes = [...new Set([...codsAsig, ...codsImp])];
 
     const prelaciones = await this.prisma.pensum_prelaciones.findMany({
       where: {
         codsede: { in: codsSede },
         codopest: { in: codsOpest },
-        codasig: { in: codsAsig },
+        codasig: { in: allQueryCodes },
       },
     });
 
     const enrichedItems = items.map((item) => {
-      const itemPrels = prelaciones
-        .filter((p) => p.codsede === item.codsede && p.codopest === item.codopest && p.codasig === item.codasig)
-        .map((p) => p.prelacion);
+      const itemPrels = Array.from(new Set(
+        prelaciones
+          .filter(
+            (p) =>
+              p.codsede === item.codsede &&
+              p.codopest === item.codopest &&
+              (p.codasig === item.codasig || (item.codasig_imp && p.codasig === item.codasig_imp)),
+          )
+          .map((p) => p.prelacion),
+      ));
       return {
         ...item,
         prelaciones: itemPrels,
@@ -381,47 +416,118 @@ export class AcademicoService {
   }
 
   async generatePensumPdf(codsede: string, codopest: string): Promise<Buffer> {
-    // 1. Obtener la oportunidad de estudio (programa) ignorando la sede específica
-    const programa = await this.prisma.oportunidadesEstudio.findFirst({
-      where: { codopest },
-    });
+    // 1. Obtener la oportunidad de estudio (programa)
+    let programa = codsede
+      ? await this.prisma.oportunidadesEstudio.findUnique({
+          where: { codsede_codopest: { codsede, codopest } },
+        })
+      : null;
+
+    if (!programa) {
+      programa = await this.prisma.oportunidadesEstudio.findFirst({
+        where: { codopest },
+      });
+    }
+
     if (!programa) {
       throw new NotFoundException(`No se encontró programa con código ${codopest}`);
     }
 
-    // 2. Obtener todas las asignaturas asociadas y deduplicarlas por codasig
-    const allAsig = await this.prisma.pensumEstudios.findMany({
-      where: { codopest },
-      orderBy: [{ periodos: 'asc' }, { codasig: 'asc' }],
-    });
+    // 2. Obtener todas las asignaturas asociadas
+    let asigs = codsede
+      ? await this.prisma.pensumEstudios.findMany({
+          where: { codsede, codopest },
+          orderBy: [{ periodos: 'asc' }, { codasig: 'asc' }],
+        })
+      : [];
 
+    if (asigs.length === 0) {
+      asigs = await this.prisma.pensumEstudios.findMany({
+        where: { codopest },
+        orderBy: [{ periodos: 'asc' }, { codasig: 'asc' }],
+      });
+    }
+
+    // Deduplicar asignaturas por código visible (codasig_imp si existe y no es 'NULL', o codasig)
     const uniqueAsigMap = new Map<string, any>();
-    allAsig.forEach((a) => {
-      if (!uniqueAsigMap.has(a.codasig)) {
-        uniqueAsigMap.set(a.codasig, a);
+    asigs.forEach((a) => {
+      const key =
+        a.codasig_imp && a.codasig_imp.trim() !== '' && a.codasig_imp !== 'NULL'
+          ? a.codasig_imp.trim()
+          : a.codasig.trim();
+
+      if (!uniqueAsigMap.has(key)) {
+        uniqueAsigMap.set(key, a);
+      } else {
+        const current = uniqueAsigMap.get(key);
+        // Preferir el registro con texto limpio sin caracteres dañados
+        if (
+          current.asignatura &&
+          current.asignatura.includes('??') &&
+          a.asignatura &&
+          !a.asignatura.includes('??')
+        ) {
+          uniqueAsigMap.set(key, a);
+        }
       }
     });
     const asignaturas = Array.from(uniqueAsigMap.values());
 
-    const asigCodes = asignaturas.map((a) => a.codasig);
+    // 3. Consultar prelaciones para este programa
+    const allInternalCodes = asigs.map((a) => a.codasig);
+    const allImpCodes = asigs.map((a) => a.codasig_imp).filter(Boolean) as string[];
+    const queryCodes = [...new Set([...allInternalCodes, ...allImpCodes])];
+
     const prelaRecords = await this.prisma.pensum_prelaciones.findMany({
       where: {
         codopest,
-        codasig: { in: asigCodes },
+        codasig: { in: queryCodes },
       },
     });
 
+    // Mapeo de códigos para mostrar el código visible en las prelaciones
+    const codeToDisplayMap = new Map<string, string>();
+    asigs.forEach((a) => {
+      const disp =
+        a.codasig_imp && a.codasig_imp.trim() !== '' && a.codasig_imp !== 'NULL'
+          ? a.codasig_imp.trim()
+          : a.codasig.trim();
+      codeToDisplayMap.set(a.codasig.trim(), disp);
+      if (a.codasig_imp) codeToDisplayMap.set(a.codasig_imp.trim(), disp);
+    });
+
     const enrichedAsignaturas = asignaturas.map((a) => {
-      const aPrels = prelaRecords
-        .filter((p) => p.codasig === a.codasig)
-        .map((p) => p.prelacion);
+      const displayCode =
+        a.codasig_imp && a.codasig_imp.trim() !== '' && a.codasig_imp !== 'NULL'
+          ? a.codasig_imp.trim()
+          : a.codasig.trim();
+
+      const matchingPrels = prelaRecords.filter((p) => {
+        const pAsig = p.codasig.trim();
+        return (
+          pAsig === a.codasig.trim() ||
+          (a.codasig_imp && pAsig === a.codasig_imp.trim()) ||
+          pAsig === displayCode
+        );
+      });
+
+      const uniquePrelCodes = Array.from(
+        new Set(
+          matchingPrels.map((p) => {
+            const rawPrel = p.prelacion.trim();
+            return codeToDisplayMap.get(rawPrel) || rawPrel;
+          }),
+        ),
+      );
+
       return {
         ...a,
-        prelacionText: aPrels.length > 0 ? aPrels.join('/') : '-',
+        displayCode,
+        prelacionText: uniquePrelCodes.length > 0 ? uniquePrelCodes.join(', ') : '-',
       };
     });
 
-    // 3. Agrupar por período
+    // 4. Agrupar por período
     const periodsMap: { [key: string]: any[] } = {};
     enrichedAsignaturas.forEach((a) => {
       const pKey = a.periodos !== null ? `Período ${a.periodos}` : 'Sin Período Definido';
@@ -446,110 +552,156 @@ export class AcademicoService {
       doc.on('error', (err) => reject(err));
 
       // --- DISEÑO DEL PDF ---
-      // Logo
-      doc.image('logo.png', 50, 42, { width: 60 });
+      // Logo institucional
+      if (fs.existsSync('logo.png')) {
+        doc.image('logo.png', 50, 42, { width: 60 });
+      }
 
       // Encabezado institucional
       doc.font('Helvetica-Bold').fillColor('#000000').fontSize(10);
-      doc.text('Centro de Investigaciones Psiquiátricas, Psicológicas y', 120, 50, { align: 'center', width: 350 });
+      doc.text('Centro de Investigaciones Psiquiátricas, Psicológicas y', 120, 50, {
+        align: 'center',
+        width: 350,
+      });
       doc.text('Sexológicas de Venezuela', 120, 62, { align: 'center', width: 350 });
       doc.font('Helvetica').fontSize(9);
       doc.text('Coordinación Académica', 120, 74, { align: 'center', width: 350 });
       doc.text('Oficina de Control de Estudios', 120, 86, { align: 'center', width: 350 });
-      
+
       const yHeaderEnd = doc.y;
 
       // Título del Pensum
-      doc.font('Helvetica-Bold').fillColor('#002855').fontSize(14).text('PENSUM DE ESTUDIOS', 50, yHeaderEnd + 15, { align: 'center' });
+      doc
+        .font('Helvetica-Bold')
+        .fillColor('#002855')
+        .fontSize(14)
+        .text('PENSUM DE ESTUDIOS', 50, yHeaderEnd + 15, { align: 'center' });
       doc.moveDown(1.5);
 
       // Detalles del programa
       const yMeta = doc.y;
       doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000');
-      doc.text('Programa: ', 50, yMeta, { lineBreak: false } as any).font('Helvetica').text(programa.titulo_a_otorgar || 'No especificado');
-      doc.font('Helvetica-Bold').text('Mención/Especialidad: ', 50, yMeta + 12, { lineBreak: false } as any).font('Helvetica').text(programa.mencion_especialidad || 'No especificada');
-      doc.font('Helvetica-Bold').text('Tipo: ', 50, yMeta + 24, { lineBreak: false } as any).font('Helvetica').text(`${programa.tipo || 'No especificado'} | Código: ${programa.codopest}`);
-      doc.font('Helvetica-Bold').text('Créditos Requeridos: ', 50, yMeta + 36, { lineBreak: false } as any).font('Helvetica').text(String(programa.creditos || 'No especificado'));
+      doc
+        .text('Programa: ', 50, yMeta, { lineBreak: false } as any)
+        .font('Helvetica')
+        .text(cleanProgramName(programa.titulo_a_otorgar) || 'No especificado');
+      doc
+        .font('Helvetica-Bold')
+        .text('Mención/Especialidad: ', 50, yMeta + 12, { lineBreak: false } as any)
+        .font('Helvetica')
+        .text(cleanProgramName(programa.mencion_especialidad) || 'No especificada');
+      doc
+        .font('Helvetica-Bold')
+        .text('Tipo: ', 50, yMeta + 24, { lineBreak: false } as any)
+        .font('Helvetica')
+        .text(
+          `${cleanHtmlEntities(programa.tipo) || 'No especificado'} | Código: ${programa.codopest}`,
+        );
+      doc
+        .font('Helvetica-Bold')
+        .text('Créditos Requeridos: ', 50, yMeta + 36, { lineBreak: false } as any)
+        .font('Helvetica')
+        .text(String(programa.creditos || 'No especificado'));
       doc.moveDown(2);
 
       // Tabla de Asignaturas
       const startX = 50;
       let currentY = doc.y;
 
-      // Dibujar cabecera
-      doc.fillColor('#002855').rect(startX, currentY, 500, 18).fill();
-      doc.font('Helvetica-Bold').fillColor('#ffffff').fontSize(8.5);
-      doc.text('Código', startX + 10, currentY + 5);
-      doc.text('Nombre de la Asignatura', startX + 80, currentY + 5);
-      doc.text('Crédito', startX + 355, currentY + 5, { width: 60, align: 'center' });
-      doc.text('Prelación', startX + 435, currentY + 5, { width: 55, align: 'center' });
-      
-      currentY += 18;
+      const drawTableHeader = (y: number) => {
+        doc.fillColor('#002855').rect(startX, y, 500, 18).fill();
+        doc.font('Helvetica-Bold').fillColor('#ffffff').fontSize(8.5);
+        doc.text('Código', startX + 10, y + 5);
+        doc.text('Nombre de la Asignatura', startX + 80, y + 5);
+        doc.text('Crédito', startX + 355, y + 5, { width: 55, align: 'center' });
+        doc.text('Prelación', startX + 420, y + 5, { width: 75, align: 'center' });
+      };
 
-      // Dibujar filas por períodos
-      doc.fontSize(8).fillColor('#000000');
+      drawTableHeader(currentY);
+      currentY += 18;
 
       sortedPeriods.forEach((period) => {
         const periodNotes = periodsMap[period];
 
-        // Dibujar borde superior del bloque de período
-        doc.strokeColor('#000000').lineWidth(0.5);
-        doc.moveTo(startX, currentY).lineTo(startX + 500, currentY).stroke();
+        // Verificar si cabe el bloque de período
+        if (currentY > 720) {
+          doc.addPage();
+          currentY = 50;
+          drawTableHeader(currentY);
+          currentY += 18;
+        }
+
+        // Título del Período
+        doc.fillColor('#eef2f6').rect(startX, currentY, 500, 14).fill();
+        doc.strokeColor('#cbd5e1').lineWidth(0.5);
+        doc.rect(startX, currentY, 500, 14).stroke();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#1e3a8a');
+        doc.text(period.toUpperCase(), startX + 10, currentY + 3.5);
+        currentY += 14;
 
         periodNotes.forEach((asig) => {
-          // Verificar si cabe en la página
-          if (currentY > 700) {
+          doc.font('Helvetica').fontSize(8);
+          const nameHeight = doc.heightOfString(asig.asignatura || '', { width: 260 });
+          doc.fontSize(7.5);
+          const prelaHeight = doc.heightOfString(asig.prelacionText || '-', { width: 75 });
+          const rowHeight = Math.max(16, Math.max(nameHeight, prelaHeight) + 6);
+
+          if (currentY + rowHeight > 740) {
             doc.addPage();
             currentY = 50;
-            // Redibujar borde superior del bloque en la nueva página
-            doc.strokeColor('#000000').lineWidth(0.5);
-            doc.moveTo(startX, currentY).lineTo(startX + 500, currentY).stroke();
+            drawTableHeader(currentY);
+            currentY += 18;
           }
 
-          const rowHeight = 18;
-
-          // Dibujar fondo blanco
+          // Fondo blanco
           doc.fillColor('#ffffff').rect(startX, currentY, 500, rowHeight).fill();
 
-          // Dibujar textos
-          doc.fillColor('#000000').font('Helvetica');
-          doc.text(asig.codasig_imp || asig.codasig, startX + 10, currentY + 5);
-          doc.text(asig.asignatura || '', startX + 80, currentY + 5, { width: 260, height: 12, ellipsis: true });
-          doc.text(asig.creditos !== null ? String(asig.creditos) : '0', startX + 355, currentY + 5, { width: 60, align: 'center' });
-          
-          doc.fontSize(7);
-          doc.text(asig.prelacionText || '-', startX + 432, currentY + 5.5, { width: 66, align: 'center' });
-          doc.fontSize(8);
+          // Textos
+          doc.fillColor('#000000').font('Helvetica').fontSize(8);
+          doc.text(asig.displayCode, startX + 10, currentY + 4);
+          doc.text(asig.asignatura || '', startX + 80, currentY + 4, { width: 260 });
+          doc.text(asig.creditos !== null ? String(asig.creditos) : '0', startX + 355, currentY + 4, {
+            width: 55,
+            align: 'center',
+          });
 
-          // Dibujar bordes de celda (borde inferior)
+          doc.fontSize(7.5);
+          doc.text(asig.prelacionText || '-', startX + 420, currentY + 4, {
+            width: 75,
+            align: 'center',
+          });
+
+          // Líneas de celda
           doc.strokeColor('#000000').lineWidth(0.5);
+          // Borde inferior
           doc.moveTo(startX, currentY + rowHeight).lineTo(startX + 500, currentY + rowHeight).stroke();
-          
+
           // Líneas verticales
           doc.moveTo(startX, currentY).lineTo(startX, currentY + rowHeight).stroke();
           doc.moveTo(startX + 75, currentY).lineTo(startX + 75, currentY + rowHeight).stroke();
           doc.moveTo(startX + 350, currentY).lineTo(startX + 350, currentY + rowHeight).stroke();
-          doc.moveTo(startX + 430, currentY).lineTo(startX + 430, currentY + rowHeight).stroke();
+          doc.moveTo(startX + 415, currentY).lineTo(startX + 415, currentY + rowHeight).stroke();
           doc.moveTo(startX + 500, currentY).lineTo(startX + 500, currentY + rowHeight).stroke();
 
           currentY += rowHeight;
         });
 
-        // Dejar un espacio antes del siguiente período
-        currentY += 10;
+        currentY += 6;
       });
 
-      currentY = currentY - 10; // Descontar el último espacio sobrante
-      doc.y = currentY;
-
-      if (currentY > 700) {
+      if (currentY > 720) {
         doc.addPage();
         currentY = 50;
       }
-
-      // Dibujar pie de página
-      doc.moveDown(2);
-      doc.font('Helvetica-Oblique').fillColor('#444444').fontSize(7.5).text('Reporte de pensum de estudios oficial generado por SACE. Todos los derechos reservados CIPPSV.', { align: 'center' });
+      doc.y = currentY + 10;
+      doc
+        .font('Helvetica-Oblique')
+        .fillColor('#444444')
+        .fontSize(7.5)
+        .text(
+          'Reporte de pensum de estudios oficial generado por SACE. Todos los derechos reservados CIPPSV.',
+          { align: 'center' },
+        );
 
       // Finalizar documento
       doc.end();
