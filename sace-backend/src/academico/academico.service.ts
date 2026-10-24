@@ -10,6 +10,11 @@ import * as fs from 'fs';
 function cleanHtmlEntities(str?: string | null): string {
   if (!str) return '';
   return str
+    .replace(/Filosof\?\?a/gi, 'Filosofía')
+    .replace(/Formaci\?\?n/gi, 'Formación')
+    .replace(/Estad\?\?stica/gi, 'Estadística')
+    .replace(/M\?\?todos/gi, 'Métodos')
+    .replace(/Investigaci\?\?n/gi, 'Investigación')
     .replace(/&oacute;/gi, 'ó')
     .replace(/&iacute;/gi, 'í')
     .replace(/&aacute;/gi, 'á')
@@ -101,8 +106,81 @@ export class AcademicoService implements OnModuleInit {
           }
         }
       }
+
+      // 3. Asegurar que las prelaciones de Doctorados (DR-CS, DR-SC, DR-SM) existan en todas las sedes
+      const doctoradosList = ['DR-CS', 'DR-SC', 'DR-SM'];
+      const docPrelsDefinition = [
+        { codasig: 'DSC-002', prelacion: 'DSC-001' },
+        { codasig: 'DSC-004', prelacion: 'DSC-003' },
+        { codasig: 'DSC-008', prelacion: 'DSC-007' },
+        { codasig: 'DSC-006', prelacion: 'DSC-005' },
+        { codasig: 'DSC-009', prelacion: 'DSC-008' },
+        { codasig: 'DSC-014', prelacion: 'DSC-013' },
+        { codasig: 'DSC-010', prelacion: 'DSC-009' },
+        { codasig: 'DSC-015', prelacion: 'DSC-014' },
+        { codasig: 'DSC-011', prelacion: 'DSC-010' },
+        { codasig: 'DSC-016', prelacion: 'DSC-015' },
+        { codasig: 'DSC-012', prelacion: 'DSC-011' },
+        { codasig: 'DSC-017', prelacion: 'DSC-012' },
+      ];
+      const allSedes = ['COC', 'COC1', 'COC2', 'CPL', 'CUM', 'EV', 'MAT', 'OCC', 'OCC1', 'ORN', 'PPAL'];
+
+      for (const doc of doctoradosList) {
+        const existingDoc = await this.prisma.pensum_prelaciones.count({
+          where: { codopest: doc },
+        });
+        if (existingDoc === 0) {
+          for (const s of allSedes) {
+            for (const p of docPrelsDefinition) {
+              await this.prisma.pensum_prelaciones.upsert({
+                where: {
+                  codsede_codopest_codasig_prelacion: {
+                    codsede: s,
+                    codopest: doc,
+                    codasig: p.codasig,
+                    prelacion: p.prelacion,
+                  },
+                },
+                update: {},
+                create: {
+                  codsede: s,
+                  codopest: doc,
+                  codasig: p.codasig,
+                  prelacion: p.prelacion,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // 4. Corregir caracteres corruptos en nombres de asignaturas de Doctorado si existen
+      await this.prisma.pensumEstudios.updateMany({
+        where: { codasig: 'DSC-001', asignatura: { contains: 'Filosof' } },
+        data: { asignatura: 'Filosofía de la Ciencia I' },
+      });
+      await this.prisma.pensumEstudios.updateMany({
+        where: { codasig: 'DSC-002' },
+        data: { asignatura: 'Filosofía de la Ciencia II' },
+      });
+      await this.prisma.pensumEstudios.updateMany({
+        where: { codasig: 'DSC-003' },
+        data: { asignatura: 'Formación de Actitudes como Ciencia I' },
+      });
+      await this.prisma.pensumEstudios.updateMany({
+        where: { codasig: 'DSC-004' },
+        data: { asignatura: 'Formación de Actitudes como Ciencia II' },
+      });
+      await this.prisma.pensumEstudios.updateMany({
+        where: { codasig: 'DSC-005' },
+        data: { asignatura: 'Estadística Aplicada' },
+      });
+      await this.prisma.pensumEstudios.updateMany({
+        where: { codasig: 'DSC-006' },
+        data: { asignatura: 'Métodos Avanzados de Investigación' },
+      });
     } catch (e: any) {
-      console.warn('Error inicializando datos de MC-PP:', e.message);
+      console.warn('Error inicializando datos académicos en OnModuleInit:', e.message);
     }
   }
 
