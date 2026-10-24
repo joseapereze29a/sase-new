@@ -955,7 +955,7 @@ export class EvaluacionesService {
       
       const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
       const today = new Date();
-      const dateString = `${ciudad}, ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}`;
+      const dateString = `Caracas, ${today.getDate()} de ${meses[today.getMonth()]} del ${today.getFullYear()}`;
       doc.font('Helvetica').fontSize(9).text(dateString, 50, currentY);
 
       currentY += 45;

@@ -488,7 +488,7 @@ export class DatosPersonalesService {
       const monthStr = meses[today.getMonth()];
       const yearStr = today.getFullYear();
       const fechaExpedicion = `${dayStr} de ${monthStr} de ${yearStr}`;
-      const dateStringFull = `${ciudad}, ${fechaExpedicion}`;
+      const dateStringFull = `Caracas, ${fechaExpedicion}`;
 
       if (certificadas) {
         // --- PORTADA DE NOTAS CERTIFICADAS (PÁGINA 1) ---
@@ -518,7 +518,7 @@ export class DatosPersonalesService {
         doc.text(studentFullName, 65, doc.y, { align: 'center', width: 465 });
 
         doc.moveDown(0.7);
-        const textP2 = `Titular de la cédula de identidad No ${formattedCedula} y en cuyo registro académico consta que obtuvo las calificaciones contenidas en el presente documento. Se hace constar que el sistema de calificaciones vigente para esta fecha es de uno a veinte puntos. La nota mínima aprobatoria es de quince (15) puntos. Se expide la presente CERTIFICACION a solicitud de parte interesada en la ciudad de ${ciudad}, ${fechaExpedicion}.`;
+        const textP2 = `Titular de la cédula de identidad No ${formattedCedula} y en cuyo registro académico consta que obtuvo las calificaciones contenidas en el presente documento. Se hace constar que el sistema de calificaciones vigente para esta fecha es de uno a veinte puntos. La nota mínima aprobatoria es de quince (15) puntos. Se expide la presente CERTIFICACION a solicitud de parte interesada en la ciudad de Caracas, ${fechaExpedicion}.`;
 
         doc.font('Helvetica').fontSize(10.5).fillColor('#000000');
         doc.text(textP2, 65, doc.y, { align: 'justify', width: 465, lineGap: 5 });
@@ -532,7 +532,7 @@ export class DatosPersonalesService {
         doc.text(certFirma, 65, yFirmaSec + 10, { align: 'center', width: 465, lineGap: 4 });
 
         doc.font('Helvetica').fontSize(10).fillColor('#000000');
-        doc.text(`${ciudad}, ${fechaExpedicion}`, 65, yFirmaSec + 55, { align: 'center', width: 465 });
+        doc.text(`Caracas, ${fechaExpedicion}`, 65, yFirmaSec + 55, { align: 'center', width: 465 });
 
         const yBottom = Math.max(doc.y + 45, 655);
 
