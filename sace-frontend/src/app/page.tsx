@@ -192,21 +192,30 @@ export default function Home() {
     }
   }, []);
 
+  const SPECIAL_CALIFICACIONES: Record<string, string> = {
+    '404': 'No Cursó',
+    '99': 'Reprobado',
+    '100': 'Aprobado',
+    '110': 'Meritorio',
+    '120': 'Excelencia',
+    '212': 'Equivalencia',
+  };
+
+  const isSpecialCalif = (c: any) => c !== undefined && c !== null && c !== '' && Object.prototype.hasOwnProperty.call(SPECIAL_CALIFICACIONES, String(c));
+
   const formatCalificacion = (calif: number | null | undefined): string => {
     if (calif === null || calif === undefined) return 'S/N';
-    if (calif === 404) return 'Sin nota';
-    if (calif === 99) return 'Reprobado';
-    if (calif === 100) return 'Aprobada';
-    if (calif === 110) return 'Meritorio';
-    if (calif === 120) return 'Excelencia';
-    if (calif === 212) return 'Equivalencia';
+    const key = String(calif);
+    if (SPECIAL_CALIFICACIONES[key]) return SPECIAL_CALIFICACIONES[key];
     return String(calif);
   };
 
   const getCalificacionColor = (calif: number | null | undefined): string => {
     if (calif === null || calif === undefined || calif === 404) return 'rgba(255,255,255,0.4)';
     if (calif === 99) return '#f87171';
-    if (calif >= 10) return '#4ade80';
+    if (calif === 100 || calif === 110 || calif === 120 || calif === 212) return '#38bdf8';
+    if (calif >= 15) return '#4ade80';
+    if (calif >= 10) return '#facc15';
     return '#f87171';
   };
 
@@ -1119,7 +1128,8 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error al registrar nota');
 
-      setMessage({ type: 'success', text: `Calificación de ${payload.calificacion} guardada correctamente para C.I. ${payload.cedula}` });
+      const notaDisplay = formatCalificacion(payload.calificacion);
+      setMessage({ type: 'success', text: `Calificación (${notaDisplay}) guardada correctamente para C.I. ${payload.cedula}` });
       
       // Reload grades for this acta in both contexts (evaluaciones and cohortes detail view)
       if (selectedActaDetail && selectedActaDetail.codacta === payload.codacta) {
@@ -5494,46 +5504,74 @@ export default function Home() {
 
                       {/* Tabla de Estudiantes */}
                       {actaStudents.length > 0 && (
-                        <div style={{ maxHeight: '250px', overflowY: 'auto', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ maxHeight: '280px', overflowY: 'auto', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                             <thead>
                               <tr style={{ background: 'rgba(255,255,255,0.05)', textAlign: 'left', color: 'rgba(255,255,255,0.6)' }}>
-                                <th style={{ padding: '8px 12px' }}>Cédula</th>
+                                <th style={{ padding: '8px 10px', width: '40px', textAlign: 'center' }}>Núm.</th>
+                                <th style={{ padding: '8px 12px', width: '110px' }}>Cédula</th>
                                 <th style={{ padding: '8px 12px' }}>Nombre y Apellido</th>
-                                <th style={{ padding: '8px 12px', width: '140px' }}>Calificación (0-20)</th>
-                                <th style={{ padding: '8px 12px', textAlign: 'center', width: '60px' }}>Acción</th>
+                                <th style={{ padding: '8px 12px', width: '90px' }}>Nota</th>
+                                <th style={{ padding: '8px 12px', width: '150px' }}>Calificación</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'center', width: '50px' }}>Acción</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {actaStudents.map((st, idx) => (
-                                <tr key={st.cedula} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                  <td style={{ padding: '8px 12px', fontWeight: 600 }}>{st.cedula}</td>
-                                  <td style={{ padding: '8px 12px' }}>{st.nombre_completo}</td>
-                                  <td style={{ padding: '8px 12px' }}>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max="20"
-                                      placeholder="Nota (0-20)..."
-                                      value={st.calificacion}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        setActaStudents(prev => prev.map((s, i) => i === idx ? { ...s, calificacion: val } : s));
-                                      }}
-                                      style={{ ...inputStyle, margin: 0, height: '32px', padding: '4px 8px', fontSize: '12px' }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => setActaStudents(prev => prev.filter((_, i) => i !== idx))}
-                                      style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '14px' }}
-                                    >
-                                      ✕
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
+                              {actaStudents.map((st, idx) => {
+                                const isSpecial = isSpecialCalif(st.calificacion);
+                                const notaVal = isSpecial ? '' : (st.calificacion ?? '');
+                                const selectVal = isSpecial ? String(st.calificacion) : '';
+
+                                return (
+                                  <tr key={st.cedula} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{idx + 1}</td>
+                                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{st.cedula}</td>
+                                    <td style={{ padding: '8px 12px' }}>{st.nombre_completo}</td>
+                                    <td style={{ padding: '8px 12px' }}>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="20"
+                                        placeholder="0-20"
+                                        value={notaVal}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setActaStudents(prev => prev.map((s, i) => i === idx ? { ...s, calificacion: val } : s));
+                                        }}
+                                        style={{ ...inputStyle, margin: 0, height: '32px', padding: '4px 8px', fontSize: '12px' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '8px 12px' }}>
+                                      <select
+                                        value={selectVal}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setActaStudents(prev => prev.map((s, i) => i === idx ? { ...s, calificacion: val } : s));
+                                        }}
+                                        style={{ ...inputStyle, margin: 0, height: '32px', padding: '4px 8px', fontSize: '12px', background: '#1e1e2d' }}
+                                      >
+                                        <option value="">- -</option>
+                                        <option value="404">No Cursó</option>
+                                        <option value="99">Reprobado</option>
+                                        <option value="100">Aprobado</option>
+                                        <option value="110">Meritorio</option>
+                                        <option value="120">Excelencia</option>
+                                        <option value="212">Equivalencia</option>
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => setActaStudents(prev => prev.filter((_, i) => i !== idx))}
+                                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '14px' }}
+                                        title="Quitar estudiante"
+                                      >
+                                        ✕
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -5553,7 +5591,7 @@ export default function Home() {
             {showAddNota && (
               <div style={{ ...modalBackdropStyle, zIndex: 1200 }}>
                 <div style={modalContentStyle}>
-                  <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: 700 }}>Cargar Calificación en {newNota.codacta || selectedActa?.codacta}</h3>
+                  <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: 700 }}>Cargar / Modificar Calificación en {newNota.codacta || selectedActa?.codacta}</h3>
                   <form onSubmit={handleSaveNota} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
                       <label style={labelStyle}>Cédula de Estudiante</label>
@@ -5563,26 +5601,45 @@ export default function Home() {
                         value={newNota.cedula}
                         onChange={(e) => setNewNota({ ...newNota, cedula: e.target.value })}
                         style={inputStyle}
+                        placeholder="Ej: 13455337"
                       />
                     </div>
 
-                    <div>
-                      <label style={labelStyle}>Calificación (Escala 0 - 20)</label>
-                      <input
-                        type="number"
-                        required
-                        min={0}
-                        max={20}
-                        placeholder="Ej: 18"
-                        value={newNota.calificacion}
-                        onChange={(e) => setNewNota({ ...newNota, calificacion: e.target.value })}
-                        style={inputStyle}
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={labelStyle}>Nota Numérica (0 - 20)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={20}
+                          placeholder="0 a 20"
+                          value={isSpecialCalif(newNota.calificacion) ? '' : newNota.calificacion}
+                          onChange={(e) => setNewNota({ ...newNota, calificacion: e.target.value })}
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={labelStyle}>Calificación Cualitativa</label>
+                        <select
+                          value={isSpecialCalif(newNota.calificacion) ? String(newNota.calificacion) : ''}
+                          onChange={(e) => setNewNota({ ...newNota, calificacion: e.target.value })}
+                          style={{ ...inputStyle, background: '#1e1e2d' }}
+                        >
+                          <option value="">- - (Usar Nota)</option>
+                          <option value="404">No Cursó</option>
+                          <option value="99">Reprobado</option>
+                          <option value="100">Aprobado</option>
+                          <option value="110">Meritorio</option>
+                          <option value="120">Excelencia</option>
+                          <option value="212">Equivalencia</option>
+                        </select>
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifySelf: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
                       <button type="button" onClick={() => setShowAddNota(false)} style={btnStyleSecondary}>Cancelar</button>
-                      <button type="submit" style={btnStylePrimary}>Cargar Nota</button>
+                      <button type="submit" style={btnStylePrimary}>Guardar Calificación</button>
                     </div>
                   </form>
                 </div>
@@ -7025,6 +7082,9 @@ export default function Home() {
                                 <th style={thStyle}>Nombres</th>
                                 <th style={{ ...thStyle, textAlign: 'center' }}>Notas</th>
                                 <th style={{ ...thStyle, textAlign: 'center' }}>Equivalencia</th>
+                                {profile.role <= 2 && (
+                                  <th style={{ ...thStyle, textAlign: 'center', width: '80px' }}>Acción</th>
+                                )}
                               </tr>
                             </thead>
                             <tbody>
@@ -7038,6 +7098,24 @@ export default function Home() {
                                     {formatCalificacion(n.calificacion)}
                                   </td>
                                   <td style={{ ...tdStyle, textAlign: 'center', color: '#60a5fa', fontWeight: 600 }}>{n.codeq || '-'}</td>
+                                  {profile.role <= 2 && (
+                                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                      <button
+                                        onClick={() => {
+                                          setNewNota({
+                                            codacta: selectedActaDetail.codacta,
+                                            cedula: String(n.cedula),
+                                            calificacion: n.calificacion !== null && n.calificacion !== undefined ? String(n.calificacion) : ''
+                                          });
+                                          setShowAddNota(true);
+                                        }}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#60a5fa', padding: '4px 8px' }}
+                                        title="Editar Calificación"
+                                      >
+                                        ✏️ Editar
+                                      </button>
+                                    </td>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>

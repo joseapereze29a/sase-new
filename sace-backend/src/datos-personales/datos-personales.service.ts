@@ -455,9 +455,9 @@ export class DatosPersonalesService {
     const formatNota = (nota: number | null, noCursado?: boolean): string => {
       if (noCursado) return 'NO CURSADO';
       if (nota === null) return 'PENDIENTE';
-      if (nota === 404) return 'SIN NOTA';
+      if (nota === 404) return 'NO CURSÓ';
       if (nota === 99) return 'REPROBADO';
-      if (nota === 100) return 'APROBADA';
+      if (nota === 100) return 'APROBADO';
       if (nota === 110) return 'MERITORIO';
       if (nota === 120) return 'EXCELENCIA';
       if (nota === 212) return 'EQUIVALENCIA';
