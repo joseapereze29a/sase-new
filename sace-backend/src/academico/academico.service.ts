@@ -42,6 +42,82 @@ function cleanProgramName(str?: string | null): string {
   return clean.trim();
 }
 
+function getCurricularRank(subjectName?: string | null): number {
+  if (!subjectName) return 100;
+  const name = subjectName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // 1. Eje Actitudinal (Siempre primero en toda la oferta institucional)
+  if (name.includes('formacion de actitudes') || name.includes('actitudes')) return 10;
+
+  // 2. Eje Disciplinar / Especialidad Principal
+  if (name.includes('filosofia de la ciencia')) return 20;
+  if (name.includes('psicopolitica')) return 21;
+  if (name.includes('sexologia') && !name.includes('sexologia basica')) return 22;
+  if (name.includes('terapia de la conducta') || (name.includes('conducta') && !name.includes('conducta general'))) return 23;
+  if (name.includes('educacion para padres')) return 24;
+  if (name.includes('supervision') || name.includes('gerencia') || name.includes('direccion, supervision')) return 25;
+
+  // 3. Eje Metodológico / Investigativo / Seminarios / Tesis
+  if (name.includes('metodologia')) return 30;
+  if (name.includes('estadistica')) return 32;
+  if (name.includes('metodos avanzados') || name.includes('metodos de investigacion')) return 34;
+  if (name.includes('seminario de tesis') || name.includes('seminario')) return 40;
+  if (name.includes('protocolo de casos') || name.includes('presentacion de casos') || name.includes('casos')) return 45;
+  if (name.includes('trabajo de grado') || name.includes('tesis') || name.includes('trabajo especial')) return 50;
+
+  // 4. Eje Instrumental y Complementario
+  if (name.includes('recursos audiovisuales') || name.includes('recursos expresivos') || name.includes('audiovisual')) return 60;
+  if (name.includes('conducta general')) return 62;
+  if (name.includes('variante fisiologica')) return 64;
+  if (name.includes('entrevista') || name.includes('tecnicas de entrevista')) return 66;
+  if (name.includes('neuropsicologia')) return 68;
+  if (name.includes('psiquiatria') || name.includes('sexologia basica')) return 70;
+  if (name.includes('electiva')) return 80;
+
+  return 90;
+}
+
+function getRomanOrNumeralValue(subjectName?: string | null): number {
+  if (!subjectName) return 0;
+  const match = subjectName.match(/\b([IVXLCDM]+|\d+)\b$/i);
+  if (!match) return 0;
+  const token = match[1].toUpperCase();
+  const romanMap: Record<string, number> = {
+    I: 1, II: 2, III: 3, IV: 4, V: 5,
+    VI: 6, VII: 7, VIII: 8, IX: 9, X: 10,
+  };
+  if (romanMap[token]) return romanMap[token];
+  const num = parseInt(token, 10);
+  return isNaN(num) ? 0 : num;
+}
+
+function sortSubjectsCurricularly(a: any, b: any): number {
+  // 1. Período cronológico
+  const perA = a.periodos !== null && a.periodos !== undefined ? Number(a.periodos) : 999;
+  const perB = b.periodos !== null && b.periodos !== undefined ? Number(b.periodos) : 999;
+  if (perA !== perB) return perA - perB;
+
+  // 2. Eje curricular institucional
+  const rankA = getCurricularRank(a.asignatura);
+  const rankB = getCurricularRank(b.asignatura);
+  if (rankA !== rankB) return rankA - rankB;
+
+  // 3. Número ordinal (I, II, III, IV...)
+  const numA = getRomanOrNumeralValue(a.asignatura);
+  const numB = getRomanOrNumeralValue(b.asignatura);
+  if (numA !== numB) return numA - numB;
+
+  // 4. Nombre
+  const nameComp = (a.asignatura || '').localeCompare(b.asignatura || '');
+  if (nameComp !== 0) return nameComp;
+
+  // 5. Código
+  return (a.codasig || '').localeCompare(b.codasig || '');
+}
+
 @Injectable()
 export class AcademicoService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
@@ -437,6 +513,8 @@ export class AcademicoService implements OnModuleInit {
       };
     });
 
+    enrichedItems.sort(sortSubjectsCurricularly);
+
     return { items: enrichedItems, total };
   }
 
@@ -676,12 +754,18 @@ export class AcademicoService implements OnModuleInit {
       };
     });
 
+    enrichedAsignaturas.sort(sortSubjectsCurricularly);
+
     // 4. Agrupar por período
     const periodsMap: { [key: string]: any[] } = {};
     enrichedAsignaturas.forEach((a) => {
       const pKey = a.periodos !== null ? `Período ${a.periodos}` : 'Sin Período Definido';
       if (!periodsMap[pKey]) periodsMap[pKey] = [];
       periodsMap[pKey].push(a);
+    });
+
+    Object.keys(periodsMap).forEach((pKey) => {
+      periodsMap[pKey].sort(sortSubjectsCurricularly);
     });
 
     const sortedPeriods = Object.keys(periodsMap).sort((a, b) => {
