@@ -220,6 +220,7 @@ export class DatosPersonalesService {
       let creditos = null;
       let fechaAprobacion = null;
       let codasig = 'No registrado';
+      let codasig_imp: string | null = null;
       let codcohorte = 'No registrado';
 
       if (acta) {
@@ -233,6 +234,7 @@ export class DatosPersonalesService {
           asignaturaNombre = asig.asignatura || 'Sin nombre';
           periodos = asig.periodos;
           creditos = asig.creditos;
+          codasig_imp = asig.codasig_imp || asig.codasig;
         }
       } else {
         // Fallback to multiactas
@@ -250,6 +252,7 @@ export class DatosPersonalesService {
             asignaturaNombre = asig.asignatura || 'Sin nombre';
             periodos = asig.periodos;
             creditos = asig.creditos;
+            codasig_imp = asig.codasig_imp || asig.codasig;
           }
         }
       }
@@ -258,6 +261,7 @@ export class DatosPersonalesService {
         codacta: nota.codacta,
         codcohorte,
         codasig,
+        codasig_imp: codasig_imp || codasig,
         asignatura: asignaturaNombre,
         calificacion: nota.calificacion,
         codeq: nota.codeq,
@@ -341,6 +345,13 @@ export class DatosPersonalesService {
     });
     const ciudad = dir?.ciudad || 'No especificada';
 
+    // Helper to extract natural sorting number from code: e.g. "OC-005" -> 5, "OC-014" -> 14
+    const getNaturalSortValue = (code?: string | null): number => {
+      if (!code) return 999999;
+      const numMatch = code.match(/\d+/);
+      return numMatch ? parseInt(numMatch[0], 10) : 999999;
+    };
+
     // Calcular estadísticas
     let totalPonderado = 0;
     let totalCreditos = 0;
@@ -349,20 +360,41 @@ export class DatosPersonalesService {
     const notesWithCredits = [];
 
     // Obtener todo el pensum de este programa
-    const fullPensum = await this.prisma.pensumEstudios.findMany({
+    const rawPensum = await this.prisma.pensumEstudios.findMany({
       where: {
         codsede: esp.codsede,
         codopest: esp.codopest
-      },
-      orderBy: [
-        { periodos: 'asc' },
-        { asignatura: 'asc' }
-      ]
+      }
+    });
+
+    // Deduplicar pensum por (periodos, codasig_imp) prefiriendo el canónico (donde codasig === codasig_imp)
+    const uniquePensumMap = new Map<string, any>();
+    for (const p of rawPensum) {
+      const impCode = p.codasig_imp || p.codasig;
+      const key = `${p.periodos}_${impCode}`;
+      if (!uniquePensumMap.has(key)) {
+        uniquePensumMap.set(key, { ...p, codasig_imp: impCode });
+      } else {
+        if (p.codasig === impCode) {
+          uniquePensumMap.set(key, { ...p, codasig_imp: impCode });
+        }
+      }
+    }
+
+    const fullPensum = Array.from(uniquePensumMap.values());
+    fullPensum.sort((a, b) => {
+      if (a.periodos !== b.periodos) return (a.periodos || 0) - (b.periodos || 0);
+      return getNaturalSortValue(a.codasig_imp) - getNaturalSortValue(b.codasig_imp);
     });
 
     if (fullPensum.length > 0) {
       for (const asig of fullPensum) {
-        const note = espNotes.find(n => normalize(n.codasig) === normalize(asig.codasig));
+        const note = espNotes.find(n => 
+          normalize(n.codasig) === normalize(asig.codasig) ||
+          normalize(n.codasig_imp) === normalize(asig.codasig_imp) ||
+          normalize(n.codasig) === normalize(asig.codasig_imp) ||
+          (n.asignatura && asig.asignatura && normalize(n.asignatura) === normalize(asig.asignatura))
+        );
         if (note) {
           const score = note.calificacion;
           const credits = asig.creditos || 0;
@@ -422,6 +454,10 @@ export class DatosPersonalesService {
           noCursado: false
         });
       }
+      notesWithCredits.sort((a, b) => {
+        if (a.periodo !== b.periodo) return (a.periodo || 0) - (b.periodo || 0);
+        return getNaturalSortValue(a.codasig_imp) - getNaturalSortValue(b.codasig_imp);
+      });
     }
 
     const promedio = totalCreditos > 0 ? (totalPonderado / totalCreditos).toFixed(2).replace('.', ',') : '0,00';
@@ -432,6 +468,10 @@ export class DatosPersonalesService {
       const pKey = n.periodo !== null ? `Período ${n.periodo}` : 'Sin Período Definido';
       if (!periodsMap[pKey]) periodsMap[pKey] = [];
       periodsMap[pKey].push(n);
+    });
+
+    Object.keys(periodsMap).forEach(key => {
+      periodsMap[key].sort((a, b) => getNaturalSortValue(a.codasig_imp) - getNaturalSortValue(b.codasig_imp));
     });
 
     const sortedPeriods = Object.keys(periodsMap).sort((a, b) => {
