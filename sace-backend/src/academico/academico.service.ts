@@ -94,27 +94,40 @@ function getRomanOrNumeralValue(subjectName?: string | null): number {
   return isNaN(num) ? 0 : num;
 }
 
+function getNaturalSortValue(code?: string | null): number {
+  if (!code) return 999999;
+  const numMatch = code.match(/\d+/);
+  return numMatch ? parseInt(numMatch[0], 10) : 999999;
+}
+
 function sortSubjectsCurricularly(a: any, b: any): number {
   // 1. Período cronológico
   const perA = a.periodos !== null && a.periodos !== undefined ? Number(a.periodos) : 999;
   const perB = b.periodos !== null && b.periodos !== undefined ? Number(b.periodos) : 999;
   if (perA !== perB) return perA - perB;
 
-  // 2. Eje curricular institucional
+  // 2. Orden numérico canónico del código institucional visible (ej. DCS-001 -> 1, DCS-003 -> 3, OC-001 -> 1, OC-005 -> 5)
+  const codeA = a.displayCode || a.codasig_imp || a.codasig;
+  const codeB = b.displayCode || b.codasig_imp || b.codasig;
+  const numSortA = getNaturalSortValue(codeA);
+  const numSortB = getNaturalSortValue(codeB);
+  if (numSortA !== numSortB) return numSortA - numSortB;
+
+  // 3. Eje curricular institucional (fallback si no hay números o son iguales)
   const rankA = getCurricularRank(a.asignatura);
   const rankB = getCurricularRank(b.asignatura);
   if (rankA !== rankB) return rankA - rankB;
 
-  // 3. Número ordinal (I, II, III, IV...)
+  // 4. Número ordinal (I, II, III, IV...)
   const numA = getRomanOrNumeralValue(a.asignatura);
   const numB = getRomanOrNumeralValue(b.asignatura);
   if (numA !== numB) return numA - numB;
 
-  // 4. Nombre
+  // 5. Nombre
   const nameComp = (a.asignatura || '').localeCompare(b.asignatura || '');
   if (nameComp !== 0) return nameComp;
 
-  // 5. Código
+  // 6. Código
   return (a.codasig || '').localeCompare(b.codasig || '');
 }
 
@@ -183,78 +196,130 @@ export class AcademicoService implements OnModuleInit {
         }
       }
 
-      // 3. Asegurar que las prelaciones de Doctorados (DR-CS, DR-SC, DR-SM) existan en todas las sedes
-      const doctoradosList = ['DR-CS', 'DR-SC', 'DR-SM'];
-      const docPrelsDefinition = [
-        { codasig: 'DSC-002', prelacion: 'DSC-001' },
-        { codasig: 'DSC-004', prelacion: 'DSC-003' },
-        { codasig: 'DSC-008', prelacion: 'DSC-007' },
-        { codasig: 'DSC-006', prelacion: 'DSC-005' },
-        { codasig: 'DSC-009', prelacion: 'DSC-008' },
-        { codasig: 'DSC-014', prelacion: 'DSC-013' },
-        { codasig: 'DSC-010', prelacion: 'DSC-009' },
-        { codasig: 'DSC-015', prelacion: 'DSC-014' },
-        { codasig: 'DSC-011', prelacion: 'DSC-010' },
-        { codasig: 'DSC-016', prelacion: 'DSC-015' },
-        { codasig: 'DSC-012', prelacion: 'DSC-011' },
-        { codasig: 'DSC-017', prelacion: 'DSC-012' },
+      // 3. Normalizar códigos institucionales y prefijos de Doctorados:
+      // DR-CS -> DCS (Consejería en Sexología)
+      // DR-SM -> DSM (Sexología Médica)
+      // DR-SC -> DSC (Salud Conductual)
+      try {
+        await this.prisma.$executeRawUnsafe(`
+          UPDATE pensum_estudios 
+          SET codasig = REPLACE(codasig, 'DSC-', 'DCS-'), 
+              codasig_imp = REPLACE(codasig_imp, 'DSC-', 'DCS-') 
+          WHERE codopest = 'DR-CS' AND (codasig LIKE 'DSC-%' OR codasig_imp LIKE 'DSC-%');
+        `);
+
+        await this.prisma.$executeRawUnsafe(`
+          UPDATE pensum_estudios 
+          SET codasig = REPLACE(codasig, 'DSC-', 'DSM-'), 
+              codasig_imp = REPLACE(REPLACE(codasig_imp, 'DSC-', 'DSM-'), 'DCS-', 'DSM-') 
+          WHERE codopest = 'DR-SM' AND (codasig LIKE 'DSC-%' OR codasig_imp LIKE 'DSC-%' OR codasig_imp LIKE 'DCS-%');
+        `);
+
+        await this.prisma.$executeRawUnsafe(`
+          UPDATE pensum_prelaciones 
+          SET codasig = REPLACE(codasig, 'DSC-', 'DCS-'), 
+              prelacion = REPLACE(prelacion, 'DSC-', 'DCS-') 
+          WHERE codopest = 'DR-CS' AND (codasig LIKE 'DSC-%' OR prelacion LIKE 'DSC-%');
+        `);
+
+        await this.prisma.$executeRawUnsafe(`
+          UPDATE pensum_prelaciones 
+          SET codasig = REPLACE(codasig, 'DSC-', 'DSM-'), 
+              prelacion = REPLACE(prelacion, 'DSC-', 'DSM-') 
+          WHERE codopest = 'DR-SM' AND (codasig LIKE 'DSC-%' OR prelacion LIKE 'DSC-%');
+        `);
+
+        await this.prisma.$executeRawUnsafe(`
+          UPDATE registro_actas 
+          SET codasig = 'DCS-001' 
+          WHERE codcohorte IN ('COCCS25-I', 'PPALCS88-I') AND codasig = 'DSC-001';
+        `);
+
+        await this.prisma.$executeRawUnsafe(`
+          UPDATE registro_actas 
+          SET codasig = 'DSM-001' 
+          WHERE codcohorte IN ('COCSM26-I', 'PPALSM26-I') AND codasig = 'DSC-001';
+        `);
+      } catch (err: any) {
+        console.warn('Advertencia en actualización de códigos de doctorados:', err.message);
+      }
+
+      // 4. Asegurar que las prelaciones de Doctorados (DR-CS, DR-SC, DR-SM) existan en todas las sedes con sus prefijos canónicos
+      const doctoradosList = [
+        { codopest: 'DR-CS', prefix: 'DCS' },
+        { codopest: 'DR-SC', prefix: 'DSC' },
+        { codopest: 'DR-SM', prefix: 'DSM' },
+      ];
+      const docBasePrels = [
+        { asigNum: '002', prelNum: '001' },
+        { asigNum: '004', prelNum: '003' },
+        { asigNum: '008', prelNum: '007' },
+        { asigNum: '006', prelNum: '005' },
+        { asigNum: '009', prelNum: '008' },
+        { asigNum: '014', prelNum: '013' },
+        { asigNum: '010', prelNum: '009' },
+        { asigNum: '015', prelNum: '014' },
+        { asigNum: '011', prelNum: '010' },
+        { asigNum: '016', prelNum: '015' },
+        { asigNum: '012', prelNum: '011' },
+        { asigNum: '017', prelNum: '012' },
       ];
       const allSedes = ['COC', 'COC1', 'COC2', 'CPL', 'CUM', 'EV', 'MAT', 'OCC', 'OCC1', 'ORN', 'PPAL'];
 
       for (const doc of doctoradosList) {
-        const existingDoc = await this.prisma.pensum_prelaciones.count({
-          where: { codopest: doc },
-        });
-        if (existingDoc === 0) {
-          for (const s of allSedes) {
-            for (const p of docPrelsDefinition) {
-              await this.prisma.pensum_prelaciones.upsert({
-                where: {
-                  codsede_codopest_codasig_prelacion: {
-                    codsede: s,
-                    codopest: doc,
-                    codasig: p.codasig,
-                    prelacion: p.prelacion,
-                  },
-                },
-                update: {},
-                create: {
+        for (const s of allSedes) {
+          for (const p of docBasePrels) {
+            const codasig = `${doc.prefix}-${p.asigNum}`;
+            const prelacion = `${doc.prefix}-${p.prelNum}`;
+            await this.prisma.pensum_prelaciones.upsert({
+              where: {
+                codsede_codopest_codasig_prelacion: {
                   codsede: s,
-                  codopest: doc,
-                  codasig: p.codasig,
-                  prelacion: p.prelacion,
+                  codopest: doc.codopest,
+                  codasig,
+                  prelacion,
                 },
-              });
-            }
+              },
+              update: {},
+              create: {
+                codsede: s,
+                codopest: doc.codopest,
+                codasig,
+                prelacion,
+              },
+            }).catch(() => {});
           }
         }
       }
 
-      // 4. Corregir caracteres corruptos en nombres de asignaturas de Doctorado si existen
-      await this.prisma.pensumEstudios.updateMany({
-        where: { codasig: 'DSC-001', asignatura: { contains: 'Filosof' } },
-        data: { asignatura: 'Filosofía de la Ciencia I' },
-      });
-      await this.prisma.pensumEstudios.updateMany({
-        where: { codasig: 'DSC-002' },
-        data: { asignatura: 'Filosofía de la Ciencia II' },
-      });
-      await this.prisma.pensumEstudios.updateMany({
-        where: { codasig: 'DSC-003' },
-        data: { asignatura: 'Formación de Actitudes como Ciencia I' },
-      });
-      await this.prisma.pensumEstudios.updateMany({
-        where: { codasig: 'DSC-004' },
-        data: { asignatura: 'Formación de Actitudes como Ciencia II' },
-      });
-      await this.prisma.pensumEstudios.updateMany({
-        where: { codasig: 'DSC-005' },
-        data: { asignatura: 'Estadística Aplicada' },
-      });
-      await this.prisma.pensumEstudios.updateMany({
-        where: { codasig: 'DSC-006' },
-        data: { asignatura: 'Métodos Avanzados de Investigación' },
-      });
+      // 5. Corregir nombres acentuados de asignaturas de Doctorado
+      const doctoradoPrefixes = ['DSC', 'DCS', 'DSM'];
+      for (const pref of doctoradoPrefixes) {
+        await this.prisma.pensumEstudios.updateMany({
+          where: { codasig: `${pref}-001` },
+          data: { asignatura: 'Filosofía de la Ciencia I' },
+        });
+        await this.prisma.pensumEstudios.updateMany({
+          where: { codasig: `${pref}-002` },
+          data: { asignatura: 'Filosofía de la Ciencia II' },
+        });
+        await this.prisma.pensumEstudios.updateMany({
+          where: { codasig: `${pref}-003` },
+          data: { asignatura: 'Formación de Actitudes como Ciencia I' },
+        });
+        await this.prisma.pensumEstudios.updateMany({
+          where: { codasig: `${pref}-004` },
+          data: { asignatura: 'Formación de Actitudes como Ciencia II' },
+        });
+        await this.prisma.pensumEstudios.updateMany({
+          where: { codasig: `${pref}-005` },
+          data: { asignatura: 'Estadística Aplicada' },
+        });
+        await this.prisma.pensumEstudios.updateMany({
+          where: { codasig: `${pref}-006` },
+          data: { asignatura: 'Métodos Avanzados de Investigación' },
+        });
+      }
     } catch (e: any) {
       console.warn('Error inicializando datos académicos en OnModuleInit:', e.message);
     }
